@@ -3,6 +3,9 @@ name = "aimacro"
 version = "0.1.0"
 description = "Implementation of Korinek, Jones, Sacher, Cotter & McCrory (2026), 'Economic Scenarios for Transformative AI'"
 requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Borislav Mavrin", email = "borislav.mavrin@gmail.com" }]
+
 dependencies = [
     "numpy>=1.26",
     "scipy>=1.11",
@@ -19,11 +22,7 @@ dependencies = [
 aimacro = "aimacro.cli:main"
 
 [dependency-groups]
-dev = [
-    "pandas-stubs>=3.0.5.260914",
-    "pytest>=8",
-    "scipy-stubs>=1.18.1.1",
-]
+dev = ["pandas-stubs>=3.0.5.260914", "pytest>=8", "scipy-stubs>=1.18.1.1"]
 
 [build-system]
 requires = ["hatchling"]
@@ -38,8 +37,8 @@ testpaths = ["tests"]
 [tool.pyright]
 typeCheckingMode = "strict"
 # Optional but highly recommended configurations for strict projects:
-pythonVersion = "3.12"             # Locks analysis to a specific Python version
-include = ["src", "tests"]                  # Directories to scan
+pythonVersion = "3.12"                                           # Locks analysis to a specific Python version
+include = ["src", "tests"]                                       # Directories to scan
 exclude = ["**/node_modules", "**/__pycache__", "venv", ".venv"]
 
 [tool.ruff]
