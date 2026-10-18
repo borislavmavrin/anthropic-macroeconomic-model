@@ -13,9 +13,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
+from .calibration import PAPER_SCENARIOS  # noqa: E402
 from .labor import steady_state  # noqa: E402
 
-COLORS = {"modest": "#1f4e9c", "substantial": "#2e6b2e", "extreme": "#b5452b"}
+COLORS = {"modest": "#1f4e9c", "substantial": "#2e6b2e", "extreme": "#b5452b", "agi": "#5b2a86"}
 PAPER_END = 2030.0
 
 
@@ -195,7 +196,8 @@ def make_figures(dfs: dict[str, pd.DataFrame], out: Path, start: float = 2025.0)
                     "(vertical line: start of 2030, the paper's horizon)")
     written.append(f)
     f = out / "scenarios_2025_2030.png"
-    scenario_panels(dfs, f, start, PAPER_END,
+    paper_dfs = {k: v for k, v in dfs.items() if k in PAPER_SCENARIOS} or dfs
+    scenario_panels(paper_dfs, f, start, PAPER_END,
                     "Replication of the paper's Figures 2-4: 2025-2030; labels are January 2030 values")
     written.append(f)
     f = out / "ai_paths.png"

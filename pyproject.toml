@@ -8,6 +8,9 @@ dependencies = [
     "scipy>=1.11",
     "pandas>=2.0",
     "matplotlib>=3.8",
+    "complexipy>=8.0.1",
+    "ruff>=0.17.1",
+    "pyright>=1.1.414",
 ]
 
 [project.scripts]
@@ -25,3 +28,100 @@ packages = ["src/aimacro"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+# Optional but highly recommended configurations for strict projects:
+pythonVersion = "3.12"             # Locks analysis to a specific Python version
+include = ["src", "tests"]                  # Directories to scan
+exclude = ["**/node_modules", "**/__pycache__", "venv", ".venv"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+# Start with the baseline and add comprehensive rule sets
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # Pyflakes
+    "I",     # isort (imports)
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "ANN",   # flake8-annotations (type annotations)
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit (security)
+    "BLE",   # flake8-blind-except
+    "FBT",   # flake8-boolean-trap
+    "A",     # flake8-builtins
+    "COM",   # flake8-commas
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T10",   # flake8-debugger
+    "DJ",    # flake8-django
+    "EM",    # flake8-errmsg
+    "EXE",   # flake8-executable
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "G",     # flake8-logging-format
+    "INP",   # flake8-no-pep420
+    "PIE",   # flake8-pie
+    "T20",   # flake8-print
+    "PYI",   # flake8-pyi
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RSE",   # flake8-raise
+    "RET",   # flake8-returns
+    "SLF",   # flake8-self
+    "SLOT",  # flake8-slot
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "TCH",   # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "ERA",   # eradicate (commented-out code)
+    "PD",    # pandas-vet
+    "PGH",   # pygrep-hooks
+    "PL",    # Pylint
+    "TRY",   # tryceratops
+    "FLY",   # flynt
+    "NPY",   # NumPy-specific rules
+    "PERF",  # Perflint
+    "RUF",   # Ruff-specific rules
+]
+
+# Disable specific noisy or conflicting rules if needed
+ignore = [
+    "E501",  # Line too long (let the formatter handle line wraps)
+]
+
+# Allow auto-fixing safely where possible
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+
+[tool.complexipy]
+paths = ["src", "tests"]
+max-complexity-allowed = 10
+snapshot-create = false
+snapshot-ignore = false
+quiet = false
+ignore-complexity = false
+failed = false
+color = "auto"
+sort = "asc"
+exclude = []
+check-script = false
+no-ignore = false
+report-ignored = false

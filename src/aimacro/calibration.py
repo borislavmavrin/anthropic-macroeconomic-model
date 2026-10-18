@@ -10,6 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 
+DEFAULT_SC_OVER_SL = 0.624   # cognitive share of employment, also the ceiling of the affected mass
+
+
 @dataclass(frozen=True)
 class Params:
     """Parameters common to all scenarios (Table 1, panels A and D)."""
@@ -17,7 +20,7 @@ class Params:
     # --- A. Technology, factor markets, ideas production ------------------
     sigma: float = 0.5            # elasticity of substitution across tasks
     sL0: float = 0.60             # base-period labor share
-    sC_over_sL: float = 0.624     # cognitive share of employment (CPS 2025)
+    sC_over_sL: float = DEFAULT_SC_OVER_SL  # cognitive share of employment (CPS 2025)
     r_bar: float = 0.115          # no-AI gross rental rate, per year
     delta: float = 0.05           # depreciation, per year (net return 6.5%)
     t0: float = 2024.0            # base period
@@ -136,6 +139,23 @@ EXTREME = Scenario(
     psi=0.90, rho=0.0, mu=0.04, thetaH=0.50,
 )
 
-SCENARIOS: dict[str, Scenario] = {s.name: s for s in (MODEST, SUBSTANTIAL, EXTREME)}
+# An AGI scenario beyond the paper's three (added in this repository, not in the paper).
+# AI reaches essentially all cognitive tasks and performs 99 percent of their instances by the
+# start of 2030, all of them automated (no augmentation, no new tasks), and the gain per task is
+# tenfold (ln 10 = 2.30 log points) at that date, still rising linearly afterwards as eq. (8)
+# prescribes.  Frictions are those of the extreme scenario.  The affected mass and the
+# diffusion share split the 99 percent symmetrically so that neither sits on its ceiling,
+# which the logistic path cannot reach.
+AGI_REPLACED_SHARE = 0.99
+_AGI_SPLIT = AGI_REPLACED_SHARE ** 0.5
+AGI = Scenario(
+    name="agi",
+    m2030=_AGI_SPLIT * DEFAULT_SC_OVER_SL, d2030=_AGI_SPLIT,
+    a_anchor=0.45, g_a=(2.302585 - 0.45) / (2030.0 - 2026.5),
+    psi=1.0, rho=0.0, mu=0.04, thetaH=0.50,
+)
+
+SCENARIOS: dict[str, Scenario] = {s.name: s for s in (MODEST, SUBSTANTIAL, EXTREME, AGI)}
+PAPER_SCENARIOS: dict[str, Scenario] = {s.name: s for s in (MODEST, SUBSTANTIAL, EXTREME)}
 
 DEFAULT_PARAMS = Params()

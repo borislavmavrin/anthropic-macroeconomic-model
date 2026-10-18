@@ -3,21 +3,22 @@
 A Python implementation of the model in Korinek, Jones, Sacher, Cotter and McCrory (2026),
 *Economic Scenarios for Transformative AI*, Anthropic Institute Working Paper 2026-02
 ([doc/econ_scenarios_transformative_ai.pdf](doc/econ_scenarios_transformative_ai.pdf)),
-calibrated with the paper's Table 1 and extended from the paper's 2030 horizon to 2050.
+calibrated with the paper's Table 1, extended from the paper's 2030 horizon to 2050, and with a
+fourth, AGI scenario added beyond the paper's three.
 
 ## Quick start
 
 ```bash
 uv sync                      # Python 3.12 virtualenv with numpy, scipy, pandas, matplotlib, pytest
 uv run pytest                # 151 acceptance tests: Tables 3, 5, 6 and the Section 3.2 steady state
-uv run aimacro               # simulate the three scenarios to 2050, print tables, write output/
+uv run aimacro               # simulate the four scenarios to 2050, print tables, write output/
 ```
 
 `uv run aimacro` writes to `output/`:
 
 | file | content |
 |---|---|
-| `table_2030.csv`, `table_2036.csv`, `table_2050.csv` | the three scenarios in the layout of the paper's Table 3 |
+| `table_2030.csv`, `table_2036.csv`, `table_2050.csv` | the four scenarios in the layout of the paper's Table 3 |
 | `annual_<scenario>.csv` | the same rows at the start of every year 2026-2050 |
 | `monthly_<scenario>.csv` | every endogenous variable of Table A.1, monthly |
 | `scenarios_2025_2030.png`, `scenarios.png`, `ai_paths.png`, `labor_market.png` | figures, see below |
@@ -25,7 +26,7 @@ uv run aimacro               # simulate the three scenarios to 2050, print table
 Python API:
 
 ```python
-from aimacro.calibration import SCENARIOS, DEFAULT_PARAMS
+from aimacro.calibration import SCENARIOS, PAPER_SCENARIOS, DEFAULT_PARAMS   # SCENARIOS adds "agi"
 from aimacro.simulate import simulate
 from aimacro.report import snapshot, table
 
@@ -38,7 +39,8 @@ simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)     # robust
 
 The package follows Appendix A of the paper (Table A.1, 44 equations per month) exactly:
 
-* `calibration.py`: every parameter of Table 1 and the three scenarios (modest, substantial, extreme).
+* `calibration.py`: every parameter of Table 1, the three scenarios of the paper (modest, substantial,
+  extreme) and the AGI scenario described below.
 * `paths.py`: logistic paths for the affected mass and diffusion through the mid-2026 anchor and
   the 2030 value (eq. 8, 8'), a linear path for the gain per task, constant automation share and
   reinstatement ratio.
@@ -68,6 +70,7 @@ the paper against the simulation at the start of 2030:
 A value passes if it is within one unit of the paper's last printed digit, or 1 percent of the
 printed value for the largest magnitudes. All 151 pass. Table 4 (outcomes implied by the survey)
 needs the respondent-level survey data, which the paper does not publish, so it is not tested.
+The AGI scenario has no counterpart in the paper and therefore no tests.
 
 Two details in the paper are ambiguous in print and were resolved by what reproduces its tables:
 
@@ -82,6 +85,8 @@ or the marginal product where employment trails demand), and all "percent above 
 figures are exponentiated log gaps.
 
 ## The extended horizon: 2036 and 2050
+
+This section covers the paper's three scenarios; the AGI scenario follows in the next one.
 
 The paper simulates 2024-2030 and explicitly declines to look further because it does not model
 robotics or physical tasks. This repository keeps the model unchanged and lets the exogenous
@@ -128,25 +133,91 @@ Features of the extended paths worth knowing before quoting them:
 * The ideas channel, "relatively minor" through 2030, becomes material by 2050: the ideas stock is
   17 and 39 percent above its no-AI path in the substantial and extreme scenarios.
 
+## An AGI scenario: 99 percent of cognitive work replaced
+
+A fourth scenario, `agi`, goes beyond the paper. It asks what the model implies if AI replaces
+99 percent of cognitive workers by the paper's scenario date. The paper's five scenario objects
+are set as follows, everything else as in the extreme scenario:
+
+| object | value | meaning |
+|---|---|---|
+| affected mass, 2030 | 0.621 (= sqrt(0.99) x 0.624) | AI reaches essentially all cognitive tasks |
+| diffusion share, 2030 | 0.995 (= sqrt(0.99)) | and is used on essentially every instance; the product is 99 percent of cognitive instances |
+| automation share | 1.0 | every AI-performed instance is done by AI alone, none augmented |
+| reinstatement ratio | 0 | no new tasks for cognitive workers |
+| gain per task | 0.45 at mid-2026, 2.30 (= ln 10, tenfold) in 2030, rising linearly after | AGI does the task ten times more productively |
+| search discount, posting speed, wage rigidity, capital elasticity | 0.04, 0.50, 0.5, 3 | the extreme scenario's frictions |
+
+"Replaced" is an input, the share of cognitive task instances performed by AI; how far cognitive
+employment actually falls is the model's output. The paths follow the same equation 8 as the
+other scenarios, which makes the logistics very steep (midpoints in 2027, most of the transition
+in 2028-2029). Two numerical notes: the affected mass and diffusion split the 99 percent
+symmetrically because a logistic cannot sit on its ceiling, and the surviving cognitive task mass
+is computed from the logistic complements so it does not cancel to zero once both paths saturate.
+
+| | 2030 | 2036 | 2050 |
+|---|---|---|---|
+| GDP, pct above no-AI path | 188 | 524 | 823 |
+| GDP growth, pct per year | 30.5 | 9.0 | 3.3 |
+| Average wage, pct above no-AI path | 158 | 394 | 599 |
+| Cognitive wage | -93 | -100 | -100 |
+| All-other wage | 187 | 397 | 599 |
+| Net return to capital, pct | 11.7 | 14.7 | 16.7 |
+| Labor share, pct of income | 37.6 | 44.4 | 45.0 |
+| Cognitive employment, pct since mid-2026 | -88.5 | -99.0 | -100 |
+| Unemployment, cognitive workers, pct | 81.6 | 91.4 | 100 |
+| Unemployment, all workers, pct | 32.7 | 10.0 | 4.9 |
+| Measured TFP, pct above no-AI path | 83 | 160 | 207 |
+| Ideas stock, pct above no-AI path | 3.8 | 28.2 | 76.1 |
+
+What the model says about such a world:
+
+* The transition is brutal and fast. Economy-wide unemployment peaks at 35 percent in 2029 and
+  GDP growth at 42 percent a year in the same year; cognitive employment is down 88 percent by
+  2030 and 99 percent by 2036, with the displaced workers taking a decade to be absorbed by the
+  other occupations (unemployment is back near 5 percent only by 2050).
+* Cognitive wages go to zero, not to a low level. With tasks as gross complements, the one
+  percent of cognitive instances left to humans would be valuable, but their mass shrinks toward
+  nothing as the logistics saturate while workers remain attached to the group, so the marginal
+  product of a cognitive worker vanishes. The cognitive group's unemployment rate reads 100
+  percent by 2050 because the group itself has essentially disappeared.
+* Everyone else gains enormously: the all-other wage is 2.9 times its no-AI path in 2030 and
+  7 times in 2050, and average wages rise with it once the cognitive group is small.
+* The gains are bounded by the weak link. Even with a tenfold gain per task in 2030 and a far
+  larger one later, measured TFP is 83 percent above path in 2030 and about triple it in 2050,
+  because the tasks AI does not perform (all physical and interpersonal work) cap output under
+  gross complementarity. GDP is nevertheless 9 times its no-AI path by 2050.
+* The labor share falls to 37 percent in 2029 and then recovers to 45 percent as the all-other
+  wage rises and the capital stock catches up. The ideas channel becomes large: ideas growth
+  peaks above 5 percent a year and the ideas stock is 76 percent above path in 2050.
+
+Caveats stack on top of the paper's own: the model has no robotics, so "all other" occupations
+are untouched by assumption; the capital-supply schedule and the matching function are
+calibrated to normal times and are being pushed to unemployment rates with no precedent; and the
+linear gain path continues past tenfold without limit (the output effect of that is small,
+because of the weak link, but the per-task number itself is not meaningful by the 2040s).
+
 ## Figures
 
 `uv run aimacro` writes the four figures below to `output/` (the PNGs are kept in git; the CSVs
-next to them are not). Blue is the modest scenario, green substantial, red extreme; dashed grey
-lines are the economy without AI.
+next to them are not). Blue is the modest scenario, green substantial, red extreme, purple the
+AGI scenario; dashed grey lines are the economy without AI.
 
 ### The paper's horizon, 2025-2030
 
-The panels of the paper's Figures 2-4 plus labor income, capital income and the ideas stock,
-each labelled with its January 2030 value. These are the numbers the acceptance tests check.
+The paper's three scenarios only: the panels of its Figures 2-4 plus labor income, capital income
+and the ideas stock, each labelled with its January 2030 value. These are the numbers the
+acceptance tests check.
 
 ![The three scenarios, 2025-2030](output/scenarios_2025_2030.png)
 
 ### The extended horizon, 2025-2050
 
-The same fifteen panels to 2050. The vertical line marks the start of 2030, where the paper
-stops; everything to its right is the extrapolation described in the previous section.
+The same fifteen panels to 2050 for all four scenarios. The vertical line marks the start of
+2030, where the paper stops; everything to its right is the extrapolation described above. The
+AGI scenario sets the scale of most panels, so read the paper's three against the 2025-2030 figure.
 
-![The three scenarios, 2025-2050](output/scenarios.png)
+![The four scenarios, 2025-2050](output/scenarios.png)
 
 ### The exogenous scenario paths
 

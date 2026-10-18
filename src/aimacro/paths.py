@@ -5,6 +5,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from scipy.special import expit
+
 from .calibration import Params, Scenario
 
 
@@ -20,7 +22,12 @@ def logistic_midpoint(ceiling: float, x_target: float, kappa: float, t_target: f
 
 
 def logistic(t: float, ceiling: float, kappa: float, t_mid: float) -> float:
-    return ceiling / (1.0 + math.exp(-kappa * (t - t_mid)))
+    return ceiling * float(expit(kappa * (t - t_mid)))
+
+
+def logistic_complement(t: float, kappa: float, t_mid: float) -> float:
+    """1 - logistic(t)/ceiling, computed without cancellation when the path is near its ceiling."""
+    return float(expit(-kappa * (t - t_mid)))
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,9 @@ class PathPoint:
     a: float    # log gain per AI-performed instance
     psi: float  # automation share
     rho: float  # reinstatement ratio
+    m_bar: float          # ceiling of the affected mass
+    m_frac_c: float       # 1 - m/m_bar, exact near the ceiling
+    d_c: float            # 1 - d, exact near the ceiling
 
 
 class AIPaths:
@@ -58,4 +68,9 @@ class AIPaths:
         return self.a0 + self.sc.g_a * (t - self.p.t0)
 
     def at(self, t: float) -> PathPoint:
-        return PathPoint(m=self.m(t), d=self.d(t), a=self.a(t), psi=self.sc.psi, rho=self.sc.rho)
+        return PathPoint(
+            m=self.m(t), d=self.d(t), a=self.a(t), psi=self.sc.psi, rho=self.sc.rho,
+            m_bar=self.m_bar,
+            m_frac_c=logistic_complement(t, self.kappa_m, self.t_m),
+            d_c=logistic_complement(t, self.kappa_d, self.t_d),
+        )

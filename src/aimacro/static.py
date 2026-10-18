@@ -44,8 +44,14 @@ def instances(p: Params, pt: PathPoint) -> Instances:
     s = p.sigma
     md = pt.m * pt.d
     e_a = math.exp(-(1.0 - s) * pt.a)
-    shift = md * (1.0 - pt.rho * pt.psi - (1.0 - pt.psi) * e_a)
-    Lambda_C = p.sC_over_sL - shift
+    c = 1.0 - pt.rho * pt.psi - (1.0 - pt.psi) * e_a   # share of an AI-performed instance's mass that leaves labor
+    shift = md * c
+    # Lambda_C = m_bar - m d c.  Written as m_bar * [(1 - x) + x (1 - c)] with x = (m/m_bar) d and
+    # 1 - x = (1 - m/m_bar) + (m/m_bar)(1 - d), so that it stays exact when m and d sit at their
+    # ceilings (the AGI scenario), where the plain difference would cancel to zero.
+    x = (1.0 - pt.m_frac_c) * pt.d
+    one_minus_x = pt.m_frac_c + (1.0 - pt.m_frac_c) * pt.d_c
+    Lambda_C = pt.m_bar * (one_minus_x + x * (1.0 - c))
     B = p.sK0 + p.sL0 * pt.psi * md * (e_a - pt.rho)
     lN_tilde = -math.log(1.0 - shift)
     return Instances(Lambda_C=Lambda_C, B=B, lN_tilde=lN_tilde, md=md, a=pt.a)
