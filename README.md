@@ -29,21 +29,19 @@ uv run aimacro               # simulate all 24 scenarios to 2050, print tables, 
 Python API:
 
 ```python
-from aimacro.calibration import (
-    SCENARIOS,
-    PAPER_SCENARIOS,
-    DEFAULT_PARAMS,
-)  # SCENARIOS adds "agi"
+from aimacro.calibration import SCENARIOS, DEFAULT_PARAMS
 from aimacro.simulate import simulate
 from aimacro.report import snapshot, table
 
-df = simulate(
-    SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0
-)  # monthly DataFrame
-snapshot(df, 2030.0)  # dict of Table-3 rows
-simulate(
-    SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0
-)  # robustness variants
+df = simulate(SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0)  # monthly DataFrame
+snapshot(df, 2030.0)                                                    # dict of Table-3 rows
+simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)    # robustness variants
+simulate(SCENARIOS["robots_extreme"], t_end=2050.0)                     # robots only
+simulate(SCENARIOS["agi+robots_full"], t_end=2050.0)                    # a combination
+
+# The catalog, all in aimacro.calibration: AI_SCENARIOS (4), ROBOT_SCENARIOS (4),
+# COMBINED_SCENARIOS (16), DIAGONAL_SCENARIOS (the 4 matched pairs),
+# PAPER_SCENARIOS (the paper's 3) and SCENARIOS (all 24).
 ```
 
 ## What is implemented
