@@ -1,12 +1,41 @@
 # anthropic-macroeconomic-model
 
 A Python implementation of the model in Korinek, Jones, Sacher, Cotter and McCrory (2026),
-*Economic Scenarios for Transformative AI*, Anthropic Institute Working Paper 2026-02
-([doc/econ_scenarios_transformative_ai.pdf](doc/econ_scenarios_transformative_ai.pdf)),
-calibrated with the paper's Table 1 and extended in three ways beyond the paper: the horizon runs to
+*Economic Scenarios for Transformative AI*, Anthropic Institute Working Paper 2026-02 (full citation
+[below](#source-paper)), calibrated with the paper's Table 1 and extended in three ways beyond the paper: the horizon runs to
 2050, an AGI scenario joins the paper's three AI scenarios, and the model is generalized so that
 robots can automate the all-other (physical and interpersonal) occupations too, with four
 robots-only scenarios and all sixteen AI x robot combinations.
+
+## Source paper
+
+The model, its calibration and the acceptance tests come from:
+
+> Korinek, Anton, Charles I. Jones, Szymon Sacher, Tess Cotter, and Peter McCrory. 2026.
+> "Economic Scenarios for Transformative AI." The Anthropic Institute Working Paper No. 2026-02,
+> September 2026.
+
+The authors' scenario explorer, which implements the same model through 2030, is at
+<https://anthropic.com/institute/econ-scenarios>; consult The Anthropic Institute for the current
+version of the paper. Copyright in the paper remains with its authors and the Institute. The code
+here is an independent implementation of the equations in the paper's Appendix A with the
+calibration of its Table 1, checked against the numbers the paper prints in its Tables 3, 5 and 6.
+Everything beyond the paper (the horizon past 2030, the AGI scenario, robotization of all-other
+work and the combined scenarios) is this repository's own extension and is not endorsed by the
+paper's authors.
+
+```bibtex
+@techreport{korinek2026scenarios,
+  title       = {Economic Scenarios for Transformative {AI}},
+  author      = {Korinek, Anton and Jones, Charles I. and Sacher, Szymon and Cotter, Tess and McCrory, Peter},
+  institution = {The Anthropic Institute},
+  type        = {Working Paper},
+  number      = {2026-02},
+  year        = {2026},
+  month       = sep,
+  url         = {https://anthropic.com/institute/econ-scenarios},
+}
+```
 
 ## Quick start
 
@@ -341,6 +370,56 @@ mirrored from the AI ladder, not an estimate; the frictions for all-other worker
 cognitive occupations are taken from the AI ladder although the retraining involved is likely
 harder; and the model has no mechanism (reservation wage, demand feedback, redistribution)
 that would stop a wage from falling to zero while output multiplies.
+
+## Follow-up work: grounding the robot shock in evidence
+
+The robot ladder above is an assumption mirrored from the AI ladder. Anthropic's Economic
+Research note ["What work can robots do?"](https://www.anthropic.com/research/what-work-can-robots-do)
+(Russell Legate-Yang and Maxim Massenkoff, September 30, 2026) measures exactly the objects the robot
+shock needs, task by task across about 900 O*NET occupations, and should replace the mirrored
+values. What it provides, and what each piece would change in this repository:
+
+* **The affected mass and its ceiling.** Physical work is 46 percent of US working hours, and
+  robots demonstrated today can do three-quarters of physical tasks, 34 percent of all hours,
+  though mostly in purpose-built or structured settings (23 percent of hours in factory-type
+  environments, 10 percent in structured facilities such as warehouses, 1 percent in unstructured
+  ones such as city roads; 12 percent of hours robots cannot do at all). In the model's units this
+  pins down the robot shock's ceiling on the affected mass well below "all of all-other work": the
+  interpersonal and dexterity-heavy parts of the group (nursing, general repair, personal care,
+  hairdressing, scaffolding) are the least exposed. Making the ceiling a parameter of the shock,
+  set from the exposure share rather than the group's whole wage bill, is the first change.
+* **The diffusion path and its timing.** The note separates capability from cost: robots are
+  cost-competitive for only 0.3 percent of job tasks today; a 20 percent cost decline would make
+  them competitive for 2.8 million workers, which at the historical 3 percent a year takes about
+  seven years; half of physical work becomes cost-competitive by 2085 at baseline and by 2050 in
+  the fast scenario, and automating 90 percent of physical work takes 53 years even then. These
+  timelines are far slower than the robot ladder here, whose "full" rung reaches 99 percent of
+  all-other work by 2035 and whose "modest" rung (20 percent by 2035) is closest to the note's fast
+  scenario. The diffusion logistic should be re-anchored to the note's cost-parity path, or
+  replaced by a cost-driven rule: an instance switches to the robot when its annual robot cost,
+  falling at a chosen rate, drops below its labor cost, which the note estimates per task.
+* **The gain per task and the automation share.** The note's cost estimates (for example about
+  45,000 dollars a year for a packing robot against 49,000 in labor; welding robots at about five
+  times the cost of a welder) give the unit-cost decline per robot-performed instance directly,
+  which is what the gain parameter means. Its finding that robots replace rather than assist
+  physical tasks supports the high automation shares used here.
+* **Who is displaced, and where they can go.** Highly exposed workers are 20 percentage points
+  less likely to be female, 55 points less likely to hold a bachelor's degree and earn about 30
+  dollars an hour less, and nine of the ten most exposed occupations are vehicle operators. That
+  argues for a search discount for displaced all-other workers moving into cognitive work that is
+  lower, not equal, to the AI ladder's, and for splitting the all-other group into a manual part
+  robots reach and an interpersonal part they largely do not, with frictions between them: the
+  third-island extension discussed above.
+* **Barriers the model lacks.** Capabilities block about 70 percent of physical tasks (manipulation
+  alone half of them), regulation about 14 percent (concentrated in healthcare, protective service
+  and education), and human preferences about a quarter. The paper's model has only a diffusion
+  share to stand in for all of these; a regulation or preference ceiling per occupation group
+  would make the robot scenarios' upper rungs explicit assumptions about those barriers falling.
+
+The note's own caveat applies here too: cost parity does not by itself imply high unemployment or
+rapid growth, because bottleneck tasks remain. That is the weak-link mechanism this model already
+has, which is why the single-shock scenarios' gains are bounded and why grounding the robot shock
+is the step that would make the combined scenarios more than an illustration.
 
 ## Figures
 
