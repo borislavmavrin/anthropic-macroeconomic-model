@@ -1,9 +1,13 @@
-"""Monthly simulation of the model with unemployment (Appendix A, Table A.1).
+"""Monthly simulation of the model with unemployment (Appendix A, Table A.1),
+generalized so that either group of occupations can shed workers.
 
-Each month the nine steps of Appendix A are evaluated in order.  The state
-carried from month to month is employment and the unemployment pool by group,
-last month's job-finding rates, last month's cognitive wage discount to the
-common wage, and the ideas gap.
+Each month the group that sits above its next full-mobility target is the
+*shedding* group: its wage is sticky (eq. 30), firms lay off the workers they do
+not demand at that wage (eq. 31), and its openings replace quits and close any
+gap of demand beyond employment.  The other group is the *absorbing* group: it is
+paid its marginal product and posts openings for a fraction theta^H of its
+shortfall (eq. 32).  With a shock on the cognitive group only, the cognitive group
+always sheds and the all-other group always absorbs, which is the paper's model.
 """
 
 from __future__ import annotations
@@ -13,177 +17,208 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .calibration import DEFAULT_PARAMS, Params, Scenario
+from .calibration import DEFAULT_PARAMS, Group, Params, Scenario, other
 from .labor import matches, steady_state
-from .paths import AIPaths
+from .paths import ScenarioPaths
 from .static import Economy, Instances, TaskEconomy, instances, targets, tfp_gap
+
+GROUPS: tuple[Group, Group] = ("C", "N")
 
 
 @dataclass(frozen=True)
 class _WageBlock:
-    """Steps 2-4: targets, the common wage, the sticky cognitive wage and demand."""
+    """Steps 2-4: targets, the common wage, roles, the sticky wage and demand."""
 
     fe: Economy  # full-employment economy (Proposition 1)
-    lC_star: float
-    lN_star: float
-    gapC: float  # ln(w_C / w), the cognitive discount to the common wage
-    x_C: float  # sticky cognitive wage gap (A-deflated)
-    lC_d: float  # cognitive labor demand at the sticky wage
-    E: float  # excess cognitive employment
-    Z: float  # cognitive shortfall of employment behind demand
-    G_C: float  # cognitive overhang
-    B_N: float  # all-other shortfall
+    l_star: dict[Group, float]
+    shed: Group
+    gap: float  # the shedding group's log wage discount to the common wage
+    x_shed: float  # sticky wage gap of the shedding group (A-deflated)
+    l_d: float  # labor demand in the shedding group at the sticky wage
+    E: float  # excess employment in the shedding group
+    Z: float  # employment trailing demand in the shedding group
+    G: float  # overhang of the shedding group against next month's target
+    B: float  # shortfall of the absorbing group against next month's target
 
 
 @dataclass(frozen=True)
 class _Flows:
     """Steps 5-6: quits, layoffs, openings, matching and job-finding rates."""
 
-    qC: float
-    qN: float
-    D_C: float
-    v_C: float
-    v_N: float
-    H_C: float
-    H_N: float
-    fC: float
-    fN: float
+    q: dict[Group, float]
+    D: dict[Group, float]
+    v: dict[Group, float]
+    H: dict[Group, float]
+    f: dict[Group, float]
 
 
 class _Simulator:
     def __init__(self, sc: Scenario, p: Params) -> None:
         self.sc, self.p = sc, p
-        self.ss = steady_state(p)
-        self.paths = AIPaths(p, sc)
-        self.xi_m = sc.xi ** (1.0 / 12.0) if sc.xi > 0 else 0.0
+        ss = steady_state(p)
+        self.ss = ss
+        self.paths = ScenarioPaths(p, sc)
+        self.U_bar: dict[Group, float] = {"C": ss.UC, "N": ss.UN}
+        self.pi: dict[Group, float] = {"C": ss.piC, "N": ss.piN}
+        self.qX: dict[Group, float] = {"C": ss.qXC, "N": ss.qXN}
+        self.qT: dict[Group, float] = {"C": ss.qTC, "N": ss.qTN}
+        self.f_bar: dict[Group, float] = {"C": ss.fC, "N": ss.fN}
+        self.xi_m: dict[Group, float] = {
+            g: sc.xi(g) ** (1.0 / 12.0) if sc.xi(g) > 0 else 0.0 for g in GROUPS
+        }
         # state
-        self.lC, self.lN = p.lC0, p.lN0
-        self.uC, self.uN = self.ss.UC, self.ss.UN
-        self.fC_prev, self.fN_prev = self.ss.fC, self.ss.fN
-        self.gapC_prev = 0.0
+        self.l: dict[Group, float] = {"C": p.lC0, "N": p.lN0}
+        self.u: dict[Group, float] = {"C": ss.UC, "N": ss.UN}
+        self.f_prev: dict[Group, float] = dict(self.f_bar)
+        self.gap_prev: dict[Group, float] = {"C": 0.0, "N": 0.0}
         self.dlnA = 0.0
 
     def _wages(self, econ: TaskEconomy, inst_next: Instances) -> _WageBlock:
-        p, ss = self.p, self.ss
-        lC_star, lN_star = targets(p, econ.inst)
-        fe = econ.at_employment(lC_star, lN_star)
-        lC_star_next, lN_star_next = targets(p, inst_next)
-        N_C = self.lC + max(0.0, self.uC - ss.UC)
-        clearing = econ.at_employment(N_C, self.lN)
-        gapC = self.xi_m * self.gapC_prev + (1.0 - self.xi_m) * (clearing.x_C - fe.x_C)
-        x_C = fe.x_C + gapC
-        lC_d = econ.cognitive_demand(x_C, self.lN).lC
+        p = self.p
+        l_star = targets(p, econ.inst)
+        fe = econ.at_employment(l_star["C"], l_star["N"])
+        l_star_next = targets(p, inst_next)
+        over = {g: math.log(self.l[g]) - math.log(l_star_next[g]) for g in GROUPS}
+        # the shedding group is the one whose target is falling: on the paper's
+        # paths the cognitive target only falls and the other only rises; with two
+        # shocks the roles switch only when one displacement overtakes the other
+        fall = {g: math.log(l_star_next[g]) - math.log(l_star[g]) for g in GROUPS}
+        shed: Group = "C" if fall["C"] <= fall["N"] else "N"
+        ab = other(shed)
+        attached = dict(self.l)
+        attached[shed] = self.l[shed] + max(0.0, self.u[shed] - self.U_bar[shed])
+        clearing = econ.at_employment(attached["C"], attached["N"])
+        xi_m = self.xi_m[shed]
+        gap = xi_m * self.gap_prev[shed] + (1.0 - xi_m) * (clearing.x(shed) - fe.x_C)
+        x_shed = fe.x_C + gap
+        l_d = econ.demand_at_wage(shed, x_shed, self.l[ab]).emp(shed)
         return _WageBlock(
             fe=fe,
-            lC_star=lC_star,
-            lN_star=lN_star,
-            gapC=gapC,
-            x_C=x_C,
-            lC_d=lC_d,
-            E=max(0.0, self.lC - lC_d),
-            Z=max(0.0, lC_d - self.lC),
-            G_C=max(0.0, math.log(self.lC) - math.log(lC_star_next)),
-            B_N=max(0.0, math.log(lN_star_next) - math.log(self.lN)),
+            l_star=l_star,
+            shed=shed,
+            gap=gap,
+            x_shed=x_shed,
+            l_d=l_d,
+            E=max(0.0, self.l[shed] - l_d),
+            Z=max(0.0, l_d - self.l[shed]),
+            G=max(0.0, over[shed]),
+            B=max(0.0, math.log(l_star_next[ab]) - math.log(self.l[ab])),
         )
 
     def _flows(self, w: _WageBlock) -> _Flows:
-        ss, sc, p = self.ss, self.sc, self.p
-        qC = ss.qXC + ss.qTC * self.fC_prev / ss.fC
-        qN = ss.qXN + ss.qTN * self.fN_prev / ss.fN
-        D_C = max(0.0, w.E - qC * self.lC)
-        v_C = (max(0.0, qC * self.lC - w.E) + sc.thetaH * w.Z) / ss.piC
-        v_N = (qN + sc.thetaH * w.B_N) * self.lN / ss.piN
-        S_C = self.uC + sc.mu * self.uN
-        S_N = sc.mu * self.uC + self.uN
-        H_C = matches(ss.chi, p.iota, S_C, v_C)
-        H_N = matches(ss.chi, p.iota, S_N, v_N)
-        return _Flows(
-            qC=qC,
-            qN=qN,
-            D_C=D_C,
-            v_C=v_C,
-            v_N=v_N,
-            H_C=H_C,
-            H_N=H_N,
-            fC=H_C / S_C + sc.mu * H_N / S_N,
-            fN=sc.mu * H_C / S_C + H_N / S_N,
-        )
+        sc, p, ss = self.sc, self.p, self.ss
+        shed, ab = w.shed, other(w.shed)
+        q: dict[Group, float] = {
+            g: self.qX[g] + self.qT[g] * self.f_prev[g] / self.f_bar[g] for g in GROUPS
+        }
+        D: dict[Group, float] = {"C": 0.0, "N": 0.0}
+        D[shed] = max(0.0, w.E - q[shed] * self.l[shed])
+        v: dict[Group, float] = {"C": 0.0, "N": 0.0}
+        v[shed] = (
+            max(0.0, q[shed] * self.l[shed] - w.E) + sc.thetaH_into(shed) * w.Z
+        ) / self.pi[shed]
+        v[ab] = (q[ab] + sc.thetaH_into(ab) * w.B) * self.l[ab] / self.pi[ab]
+        mu_C, mu_N = (
+            sc.mu_from("C"),
+            sc.mu_from("N"),
+        )  # discount outside the origin group
+        S: dict[Group, float] = {
+            "C": self.u["C"] + mu_N * self.u["N"],
+            "N": mu_C * self.u["C"] + self.u["N"],
+        }
+        H: dict[Group, float] = {g: matches(ss.chi, p.iota, S[g], v[g]) for g in GROUPS}
+        f: dict[Group, float] = {
+            "C": H["C"] / S["C"] + mu_C * H["N"] / S["N"],
+            "N": mu_N * H["C"] / S["C"] + H["N"] / S["N"],
+        }
+        return _Flows(q=q, D=D, v=v, H=H, f=f)
 
     def _record(self, econ: TaskEconomy, w: _WageBlock, f: _Flows) -> dict[str, float]:
         """Step 8: the actual economy at realized employment."""
         p = self.p
-        act = econ.at_employment(self.lC, self.lN)
-        # the cognitive wage paid is the sticky wage, or the MPL where employment
-        # trails demand
-        x_C_paid = act.x_C if w.Z > 0 else w.x_C
-        dlnw_C, dlnw_N = x_C_paid + self.dlnA, act.x_N + self.dlnA
-        wage_bill = math.exp(dlnw_C) * self.lC + math.exp(dlnw_N) * self.lN
+        shed, ab = w.shed, other(w.shed)
+        act = econ.at_employment(self.l["C"], self.l["N"])
+        # the shedding group is paid the sticky wage, or its MPL where employment
+        # trails demand; the absorbing group is paid its MPL
+        x_paid: dict[Group, float] = {ab: act.x(ab)}
+        x_paid[shed] = act.x(shed) if w.Z > 0 else w.x_shed
+        dlnw = {g: x_paid[g] + self.dlnA for g in GROUPS}
+        bill = {g: math.exp(dlnw[g]) * self.l[g] for g in GROUPS}
+        # carry the absorbing group's actual discount so that a role switch starts
+        # its sticky wage from the wage it is being paid
+        self.gap_prev[ab] = act.x(ab) - w.fe.x_C
+        self.gap_prev[shed] = w.gap
+        inst = econ.inst
         return {
-            "md": econ.inst.md,
-            "a": econ.inst.a,
             "dlnA": self.dlnA,
             "dlnY": act.yhat + self.dlnA,
             "yhat": act.yhat,
             "x_r": act.x_r,
             "dlnK": act.dlnK,
             "sL": act.sL,
-            "dlnw_C": dlnw_C,
-            "dlnw_C_sticky": w.x_C + self.dlnA,
+            "dlnw_C": dlnw["C"],
+            "dlnw_N": dlnw["N"],
             "mpl_C": act.x_C + self.dlnA,
-            "dlnw_N": dlnw_N,
+            "mpl_N": act.x_N + self.dlnA,
             "dlnw_common": w.fe.x_C + self.dlnA,
-            "dlnw_avg": math.log(wage_bill / (self.lC + self.lN)),
-            "dln_labor_income": math.log(wage_bill / p.L_emp0),
-            "dln_cog_wage_bill": math.log(math.exp(dlnw_C) * self.lC / p.lC0),
-            "tfp": tfp_gap(p, econ.inst, self.dlnA),
-            "lC": self.lC,
-            "lN": self.lN,
-            "UC": self.uC,
-            "UN": self.uN,
-            "lC_star": w.lC_star,
-            "lN_star": w.lN_star,
-            "lC_d": w.lC_d,
-            "qC": f.qC,
-            "qN": f.qN,
-            "D_C": f.D_C,
-            "v_C": f.v_C,
-            "v_N": f.v_N,
-            "H_C": f.H_C,
-            "H_N": f.H_N,
-            "fC": f.fC,
-            "fN": f.fN,
-            "G_C": w.G_C,
-            "B_N": w.B_N,
+            "x_sticky": w.x_shed + self.dlnA,
+            "dlnw_avg": math.log((bill["C"] + bill["N"]) / (self.l["C"] + self.l["N"])),
+            "dln_labor_income": math.log((bill["C"] + bill["N"]) / p.L_emp0),
+            "dln_cog_wage_bill": math.log(bill["C"] / p.lC0),
+            "dln_other_wage_bill": math.log(bill["N"] / p.lN0),
+            "tfp": tfp_gap(p, inst, self.dlnA),
+            "lC": self.l["C"],
+            "lN": self.l["N"],
+            "UC": self.u["C"],
+            "UN": self.u["N"],
+            "lC_star": w.l_star["C"],
+            "lN_star": w.l_star["N"],
+            "shed_C": 1.0 if shed == "C" else 0.0,
+            "l_d_shed": w.l_d,
+            "qC": f.q["C"],
+            "qN": f.q["N"],
+            "D_C": f.D["C"],
+            "D_N": f.D["N"],
+            "v_C": f.v["C"],
+            "v_N": f.v["N"],
+            "H_C": f.H["C"],
+            "H_N": f.H["N"],
+            "fC": f.f["C"],
+            "fN": f.f["N"],
+            "G": w.G,
+            "B": w.B,
             "E": w.E,
             "Z": w.Z,
             "x_r_fe": w.fe.x_r,
             "dlnY_fe": w.fe.yhat + self.dlnA,
             "sL_fe": w.fe.sL,
+            "md_C": inst.md_C,
+            "md_N": inst.md_N,
+            "a_C": inst.a_C,
+            "a_N": inst.a_N,
         }
 
-    def _advance(self, dlnY: float, w: _WageBlock, f: _Flows) -> None:
+    def _advance(self, dlnY: float, f: _Flows) -> None:
         """Steps 9 and 7: the ideas step (eq. 42) and the stock updates (eq. 36-37)."""
         p = self.p
         dg = p.g * (math.exp(p.lam * dlnY - p.one_minus_phiR * self.dlnA) - 1.0)
         self.dlnA += p.h * dg
-        lC, lN, uC, uN = self.lC, self.lN, self.uC, self.uN
-        self.lC = (1.0 - f.qC) * lC - f.D_C + f.H_C
-        self.lN = (1.0 - f.qN) * lN + f.H_N
-        self.uC = uC + f.qC * lC + f.D_C - f.fC * uC
-        self.uN = uN + f.qN * lN - f.fN * uN
-        self.fC_prev, self.fN_prev = f.fC, f.fN
-        self.gapC_prev = w.gapC
+        emp, pool = dict(self.l), dict(self.u)
+        for g in GROUPS:
+            self.l[g] = (1.0 - f.q[g]) * emp[g] - f.D[g] + f.H[g]
+            self.u[g] = pool[g] + f.q[g] * emp[g] + f.D[g] - f.f[g] * pool[g]
+        self.f_prev = dict(f.f)
 
     def month(self, t: float) -> dict[str, float]:
-        pt = self.paths.at(t)
-        inst = instances(self.p, pt)
-        inst_next = instances(self.p, self.paths.at(t + self.p.h))
+        ptC, ptN = self.paths.at(t)
+        inst = instances(self.p, ptC, ptN)
+        inst_next = instances(self.p, *self.paths.at(t + self.p.h))
         econ = TaskEconomy(self.p, inst, self.dlnA, self.sc.eps)
         w = self._wages(econ, inst_next)
         f = self._flows(w)
         row = self._record(econ, w, f)
-        row["m"], row["d"] = pt.m, pt.d
-        self._advance(row["dlnY"], w, f)
+        row.update({"m_C": ptC.m, "d_C": ptC.d, "m_N": ptN.m, "d_N": ptN.d})
+        self._advance(row["dlnY"], f)
         return row
 
 
