@@ -6,3 +6,5 @@ green:
 	uv run pyright
 	uv run complexipy
 	uv run pytest tests/
+	uv run pylint src tests
+	uv run codespell

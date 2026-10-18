@@ -26,13 +26,21 @@ uv run aimacro               # simulate the four scenarios to 2050, print tables
 Python API:
 
 ```python
-from aimacro.calibration import SCENARIOS, PAPER_SCENARIOS, DEFAULT_PARAMS   # SCENARIOS adds "agi"
+from aimacro.calibration import (
+    SCENARIOS,
+    PAPER_SCENARIOS,
+    DEFAULT_PARAMS,
+)  # SCENARIOS adds "agi"
 from aimacro.simulate import simulate
 from aimacro.report import snapshot, table
 
-df = simulate(SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0)   # monthly DataFrame
-snapshot(df, 2030.0)                                                     # dict of Table-3 rows
-simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)     # robustness variants
+df = simulate(
+    SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0
+)  # monthly DataFrame
+snapshot(df, 2030.0)  # dict of Table-3 rows
+simulate(
+    SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0
+)  # robustness variants
 ```
 
 ## What is implemented

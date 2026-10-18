@@ -1,23 +1,25 @@
-"""The frictional labor market: steady state (eq. 38) and the matching function (eq. 34)."""
+"""The frictional labor market: steady state (eq. 38) and matching function (eq. 34)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from scipy.optimize import brentq
 
-from .calibration import Params
+if TYPE_CHECKING:
+    from .calibration import Params
 
 
 def matches(chi: float, iota: float, S: float, v: float) -> float:
     """den Haan, Ramey and Watson (2000) matching function, eq. (34)."""
-    if S <= 0.0 or v <= 0.0:
+    if S <= 0 or v <= 0:
         return 0.0
     return chi * S * v / (S**iota + v**iota) ** (1.0 / iota)
 
 
 def filling_rate(chi: float, iota: float, hires_per_search: float) -> float:
-    """Invert the matching function: filling rate pi given H/S (eq. 38, third condition)."""
+    """Invert the matching function: filling rate given H/S (eq. 38, third condition)."""
     x = (hires_per_search / chi) ** iota
     return chi * (1.0 - x) ** (1.0 / iota)
 
@@ -50,13 +52,13 @@ def steady_state(p: Params) -> SteadyState:
     mu = p.mu_bar
     U = p.U_bar
 
-    def fC_of(UC: float) -> float:
-        UN = U - UC
-        SC, SN = UC + mu * UN, mu * UC + UN
+    def fC_of(uC: float) -> float:
+        uN = U - uC
+        SC, SN = uC + mu * uN, mu * uC + uN
         return HC / SC + mu * HN / SN
 
     # split the pool so that the cognitive inflow equals the cognitive outflow
-    UC = brentq(lambda u: fC_of(u) * u - HC, 1e-9, U - 1e-9, xtol=1e-15)
+    UC = float(brentq(lambda u: fC_of(u) * u - HC, 1e-9, U - 1e-9, xtol=1e-15))
     UN = U - UC
     SC, SN = UC + mu * UN, mu * UC + UN
     fC = HC / SC + mu * HN / SN
@@ -69,12 +71,25 @@ def steady_state(p: Params) -> SteadyState:
         return (p.lC0 * piC + p.lN0 * piN) / p.L_emp0
 
     chi_lo = max(HC / SC, HN / SN) * (1.0 + 1e-9)
-    chi = brentq(lambda c: mean_pi(c) - p.pi_bar_mean, chi_lo, 5.0, xtol=1e-14)
+    chi = float(brentq(lambda c: mean_pi(c) - p.pi_bar_mean, chi_lo, 5.0, xtol=1e-14))
     piC = filling_rate(chi, p.iota, HC / SC)
     piN = filling_rate(chi, p.iota, HN / SN)
     return SteadyState(
-        UC=UC, UN=UN, HC=HC, HN=HN, SC=SC, SN=SN, fC=fC, fN=fN, piC=piC, piN=piN, chi=chi,
-        qC=qC, qN=qN,
-        qXC=(1.0 - p.qT_share) * qC, qTC=p.qT_share * qC,
-        qXN=(1.0 - p.qT_share) * qN, qTN=p.qT_share * qN,
+        UC=UC,
+        UN=UN,
+        HC=HC,
+        HN=HN,
+        SC=SC,
+        SN=SN,
+        fC=fC,
+        fN=fN,
+        piC=piC,
+        piN=piN,
+        chi=chi,
+        qC=qC,
+        qN=qN,
+        qXC=(1.0 - p.qT_share) * qC,
+        qTC=p.qT_share * qC,
+        qXN=(1.0 - p.qT_share) * qN,
+        qTN=p.qT_share * qN,
     )

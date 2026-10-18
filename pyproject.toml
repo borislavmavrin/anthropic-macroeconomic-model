@@ -11,13 +11,19 @@ dependencies = [
     "complexipy>=8.0.1",
     "ruff>=0.17.1",
     "pyright>=1.1.414",
+    "pylint>=4.1.3",
+    "codespell>=2.4.3",
 ]
 
 [project.scripts]
 aimacro = "aimacro.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pandas-stubs>=3.0.5.260914",
+    "pytest>=8",
+    "scipy-stubs>=1.18.1.1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -93,7 +99,8 @@ select = [
 
 # Disable specific noisy or conflicting rules if needed
 ignore = [
-    "E501",  # Line too long (let the formatter handle line wraps)
+    "E501",   # Line too long (let the formatter handle line wraps)
+    "COM812", # Missing trailing comma: conflicts with the formatter, which owns commas
 ]
 
 # Allow auto-fixing safely where possible
@@ -125,3 +132,20 @@ exclude = []
 check-script = false
 no-ignore = false
 report-ignored = false
+
+[tool.pylint.main]
+# Only the file-length check; ruff and pyright cover everything else.
+disable = ["all"]
+enable = ["too-many-lines"]
+ignore-paths = ["^\\.venv/.*$", "^output/.*$"]
+
+[tool.pylint.format]
+max-module-lines = 500
+
+[tool.codespell]
+# Checks every text file: code, comments, strings, README, Makefile, this file.
+skip = ".git,.venv,output,uv.lock,*.pdf,*.png"
+check-filenames = true
+check-hidden = true
+count = true
+quiet-level = 3

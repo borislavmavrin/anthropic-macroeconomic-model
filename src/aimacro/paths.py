@@ -4,18 +4,33 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from scipy.special import expit
 
-from .calibration import Params, Scenario
+if TYPE_CHECKING:
+    from .calibration import Params, Scenario
 
 
-def logistic_slope(ceiling: float, x_anchor: float, x_target: float, years: float) -> float:
+def logistic_slope(
+    ceiling: float,
+    x_anchor: float,
+    x_target: float,
+    years: float,
+) -> float:
     """Equation (8'): slope that takes a logistic from x_anchor to x_target in `years`."""
-    return math.log((ceiling - x_anchor) / x_anchor * x_target / (ceiling - x_target)) / years
+    return (
+        math.log((ceiling - x_anchor) / x_anchor * x_target / (ceiling - x_target))
+        / years
+    )
 
 
-def logistic_midpoint(ceiling: float, x_target: float, kappa: float, t_target: float) -> float:
+def logistic_midpoint(
+    ceiling: float,
+    x_target: float,
+    kappa: float,
+    t_target: float,
+) -> float:
     """Date at which the logistic with ceiling and slope kappa reaches ceiling/2,
     given that it equals x_target at t_target."""
     return t_target + math.log(ceiling / x_target - 1.0) / kappa
@@ -26,27 +41,27 @@ def logistic(t: float, ceiling: float, kappa: float, t_mid: float) -> float:
 
 
 def logistic_complement(t: float, kappa: float, t_mid: float) -> float:
-    """1 - logistic(t)/ceiling, computed without cancellation when the path is near its ceiling."""
+    """One minus the logistic over its ceiling, exact when the path is near the ceiling."""
     return float(expit(-kappa * (t - t_mid)))
 
 
 @dataclass(frozen=True)
 class PathPoint:
-    m: float    # affected mass
-    d: float    # diffusion share
-    a: float    # log gain per AI-performed instance
+    m: float  # affected mass
+    d: float  # diffusion share
+    a: float  # log gain per AI-performed instance
     psi: float  # automation share
     rho: float  # reinstatement ratio
-    m_bar: float          # ceiling of the affected mass
-    m_frac_c: float       # 1 - m/m_bar, exact near the ceiling
-    d_c: float            # 1 - d, exact near the ceiling
+    m_bar: float  # ceiling of the affected mass
+    m_frac_c: float  # one minus m/m_bar, exact near the ceiling
+    d_c: float  # one minus d, exact near the ceiling
 
 
 class AIPaths:
     """m_t and d_t follow logistics through the mid-2026 anchor and the 2030 value,
     a_t is linear from its mid-2026 anchor, psi and rho are constant."""
 
-    def __init__(self, p: Params, sc: Scenario):
+    def __init__(self, p: Params, sc: Scenario) -> None:
         self.p, self.sc = p, sc
         years = p.t_target - p.t_anchor
         self.m_bar = p.m_bar
@@ -55,7 +70,7 @@ class AIPaths:
         self.d_bar = p.d_bar
         self.kappa_d = logistic_slope(p.d_bar, p.d_anchor, sc.d2030, years)
         self.t_d = logistic_midpoint(p.d_bar, sc.d2030, self.kappa_d, p.t_target)
-        # a_t = a_0 + g_a (t - t0), anchored at mid-2026
+        # the gain is linear in time and anchored at mid-2026
         self.a0 = sc.a_anchor - sc.g_a * (p.t_anchor - p.t0)
 
     def m(self, t: float) -> float:
@@ -69,7 +84,11 @@ class AIPaths:
 
     def at(self, t: float) -> PathPoint:
         return PathPoint(
-            m=self.m(t), d=self.d(t), a=self.a(t), psi=self.sc.psi, rho=self.sc.rho,
+            m=self.m(t),
+            d=self.d(t),
+            a=self.a(t),
+            psi=self.sc.psi,
+            rho=self.sc.rho,
             m_bar=self.m_bar,
             m_frac_c=logistic_complement(t, self.kappa_m, self.t_m),
             d_c=logistic_complement(t, self.kappa_d, self.t_d),
