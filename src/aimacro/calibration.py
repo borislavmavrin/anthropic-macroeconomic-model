@@ -3,8 +3,8 @@
 extended with robotization of the all-other (physical and interpersonal) occupations.
 
 Panel A and D numbers are taken from Table 1 (pp. 23-25) and Table A.2 of the paper.
-The AI shocks reproduce the paper's three scenarios.  The AGI shock, the robot shocks
-and all combinations are additions of this repository.
+The scenarios themselves live one per file in aimacro.scenarios: the paper's three AI
+scenarios, and the AGI, robot and combined scenarios this repository adds.
 """
 
 from __future__ import annotations
@@ -203,77 +203,33 @@ class Scenario:
         return self.shock_for(other(g)).thetaH
 
 
-# --- AI shocks on the cognitive group (Table 1) ----------------------------------
+# --- Building blocks of the scenario files in aimacro.scenarios ------------------
 
-AI_SHOCKS: dict[str, Shock] = {
-    "modest": Shock(
-        m_target=0.2,
-        d_target=0.2,
-        a_anchor=0.30,
-        g_a=0.0,
-        psi=0.50,
-        rho=0.50,
-        mu=0.17,
-        thetaH=0.10,
-    ),
-    "substantial": Shock(
-        m_target=0.3,
-        d_target=0.4,
-        a_anchor=0.35,
-        g_a=0.028,
-        psi=0.75,
-        rho=0.25,
-        mu=0.08,
-        thetaH=0.25,
-    ),
-    "extreme": Shock(
-        m_target=0.5,
-        d_target=0.6,
-        a_anchor=0.45,
-        g_a=0.10,
-        psi=0.90,
-        rho=0.0,
-        mu=0.04,
-        thetaH=0.50,
-    ),
-}
-
-# An AGI shock beyond the paper's three.  AI reaches essentially all cognitive tasks
-# and performs 99 percent of their instances by the start of 2030, all automated,
-# with a tenfold gain per task at that date.  The affected mass and the diffusion
+# The AGI and full-robotization shocks: the technology reaches essentially all of
+# the group's tasks and performs 99 percent of their instances at the target date,
+# all automated, with a tenfold gain per task.  The affected mass and the diffusion
 # share split the 99 percent symmetrically so that neither sits on its ceiling.
 REPLACED_SHARE = 0.99
-_SPLIT = REPLACED_SHARE**0.5
-AI_SHOCKS["agi"] = Shock(
-    m_target=_SPLIT * M_BAR_C,
-    d_target=_SPLIT,
-    a_anchor=0.45,
-    g_a=(math.log(10.0) - 0.45) / (T_TARGET_AI - T_ANCHOR),
-    psi=1.0,
-    rho=0.0,
-    mu=0.04,
-    thetaH=0.50,
-)
+REPLACED_SPLIT = REPLACED_SHARE**0.5
+FULL_GAIN = math.log(10.0)  # log gain per instance at the target date
 
-# --- Robot shocks on the all-other group (this repository, not the paper) --------
-# The AI ladder mirrored on physical and interpersonal work: the same affected
-# shares and diffusion of the group's work, reached in 2035 rather than 2030 from
-# near-zero mid-2026 anchors (2 percent of the group's work affected, 5 percent
-# diffusion), gains that reach the AI ladder's 2030 values in 2035, a higher
-# automation share (robots replace rather than assist), and the AI ladder's
-# frictions for displaced workers moving into cognitive occupations.
-
-ROBOT_ANCHOR_SHARE = 0.02  # of all-other work affected, mid-2026
+# Robots start from near-zero mid-2026 anchors: 2 percent of all-other work affected,
+# 5 percent diffusion.
+ROBOT_ANCHOR_SHARE = 0.02
 ROBOT_ANCHOR_DIFFUSION = 0.05
 
 
-def _robot_shock(
+def robot_shock(
     share: float,
     d: float,
     a: tuple[float, float],
     psi_rho: tuple[float, float],
     frictions: tuple[float, float],
 ) -> Shock:
+    """A robot shock on the all-other group that affects `share` of its work and
+    diffuses to `d` of it by 2035, with the gain rising linearly from a[0] mid-2026
+    to a[1] in 2035, automation share and reinstatement ratio `psi_rho`, and the
+    search discount and posting speed `frictions` of the workers it displaces."""
     a_anchor, a_target = a
     return Shock(
         m_target=share * M_BAR_N,
@@ -289,69 +245,5 @@ def _robot_shock(
         t_target=T_TARGET_ROBOTS,
     )
 
-
-ROBOT_SHOCKS: dict[str, Shock] = {
-    "modest": _robot_shock(0.2, 0.2, (0.30, 0.30), (0.90, 0.50), (0.17, 0.10)),
-    "substantial": _robot_shock(0.3, 0.4, (0.35, 0.45), (0.90, 0.25), (0.08, 0.25)),
-    "extreme": _robot_shock(0.5, 0.6, (0.45, 0.80), (0.95, 0.0), (0.04, 0.50)),
-    "full": _robot_shock(
-        _SPLIT,
-        _SPLIT,
-        (0.45, math.log(10.0)),
-        (1.0, 0.0),
-        (0.04, 0.50),
-    ),
-}
-
-# --- The scenario catalog --------------------------------------------------------
-
-RUNG_OF = {"full": "agi"}  # the robot ladder's top rung pairs with AGI
-
-AI_SCENARIOS: dict[str, Scenario] = {
-    name: Scenario(name, ai=shock, robots=None, rung=name)
-    for name, shock in AI_SHOCKS.items()
-}
-ROBOT_SCENARIOS: dict[str, Scenario] = {
-    f"robots_{name}": Scenario(
-        f"robots_{name}",
-        ai=None,
-        robots=shock,
-        rung=RUNG_OF.get(name, name),
-    )
-    for name, shock in ROBOT_SHOCKS.items()
-}
-
-
-def combine(ai: Scenario, robots: Scenario) -> Scenario:
-    return Scenario(
-        f"{ai.name}+{robots.name}",
-        ai=ai.ai,
-        robots=robots.robots,
-        eps=ai.eps,
-        rung=ai.rung,
-    )
-
-
-COMBINED_SCENARIOS: dict[str, Scenario] = {
-    combine(a, r).name: combine(a, r)
-    for a in AI_SCENARIOS.values()
-    for r in ROBOT_SCENARIOS.values()
-}
-DIAGONAL_SCENARIOS: dict[str, Scenario] = {
-    sc.name: sc
-    for sc in COMBINED_SCENARIOS.values()
-    if sc.robots is not None
-    and sc.ai is not None
-    and ROBOT_SCENARIOS[sc.name.split("+")[1]].rung == sc.rung
-}
-
-PAPER_SCENARIOS: dict[str, Scenario] = {
-    k: AI_SCENARIOS[k] for k in ("modest", "substantial", "extreme")
-}
-SCENARIOS: dict[str, Scenario] = {
-    **AI_SCENARIOS,
-    **ROBOT_SCENARIOS,
-    **COMBINED_SCENARIOS,
-}
 
 DEFAULT_PARAMS = Params()

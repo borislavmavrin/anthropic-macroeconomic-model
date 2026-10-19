@@ -58,17 +58,21 @@ uv run aimacro               # simulate all 24 scenarios to 2050, print tables, 
 Python API:
 
 ```python
-from aimacro.calibration import SCENARIOS, DEFAULT_PARAMS
+from aimacro.calibration import DEFAULT_PARAMS
+from aimacro.scenarios import SCENARIOS
 from aimacro.simulate import simulate
 from aimacro.report import snapshot, table
 
-df = simulate(SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0)  # monthly DataFrame
-snapshot(df, 2030.0)                                                    # dict of Table-3 rows
-simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)    # robustness variants
-simulate(SCENARIOS["robots_extreme"], t_end=2050.0)                     # robots only
-simulate(SCENARIOS["agi+robots_full"], t_end=2050.0)                    # a combination
+# monthly DataFrame, and a dict of its Table-3 rows at the start of 2030
+df = simulate(SCENARIOS["substantial"], DEFAULT_PARAMS, t_end=2036.0)
+snapshot(df, 2030.0)
 
-# The catalog, all in aimacro.calibration: AI_SCENARIOS (4), ROBOT_SCENARIOS (4),
+# robustness variants, robots only, and a combination
+simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)
+simulate(SCENARIOS["robots_extreme"], t_end=2050.0)
+simulate(SCENARIOS["agi+robots_full"], t_end=2050.0)
+
+# The catalog, all in aimacro.scenarios: AI_SCENARIOS (4), ROBOT_SCENARIOS (4),
 # COMBINED_SCENARIOS (16), DIAGONAL_SCENARIOS (the 4 matched pairs),
 # PAPER_SCENARIOS (the paper's 3) and SCENARIOS (all 24).
 ```
@@ -80,8 +84,11 @@ The package follows Appendix A of the paper (Table A.1, 44 equations per month) 
 * `calibration.py`: every parameter of Table 1. A `Shock` holds the five scenario objects of
   Section 2.1.2 for one group of occupations plus the frictions for the workers it displaces; a
   `Scenario` is an AI shock on the cognitive group, a robot shock on the all-other group (either
-  may be absent) and the capital-supply elasticity. The catalog has the paper's three AI
-  scenarios, the AGI scenario, four robots-only scenarios and the sixteen combinations.
+  may be absent) and the capital-supply elasticity.
+* `scenarios/`: one module per scenario, each defining its `SCENARIO`: the paper's three AI
+  scenarios (`modest.py`, `substantial.py`, `extreme.py`), `agi.py`, and the four robots-only
+  scenarios (`robots_modest.py` to `robots_full.py`). The package `__init__` derives the sixteen
+  combinations and assembles the catalog.
 * `paths.py`: logistic paths for the affected mass and diffusion through a shock's anchor and
   target values (eq. 8, 8'), a linear path for the gain per task, constant automation share and
   reinstatement ratio, for each group.

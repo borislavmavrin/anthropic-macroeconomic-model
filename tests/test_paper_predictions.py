@@ -25,9 +25,10 @@ import math
 
 import pytest
 
-from aimacro.calibration import DEFAULT_PARAMS, SCENARIOS
+from aimacro.calibration import DEFAULT_PARAMS
 from aimacro.labor import steady_state
 from aimacro.report import snapshot
+from aimacro.scenarios import SCENARIOS
 from aimacro.simulate import simulate
 
 T2030 = 2030.0

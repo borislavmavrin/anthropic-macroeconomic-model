@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from .calibration import (
+from .calibration import DEFAULT_PARAMS
+from .plots import make_figures
+from .report import annual_path, grid, table
+from .scenarios import (
     AI_SCENARIOS,
-    DEFAULT_PARAMS,
     DIAGONAL_SCENARIOS,
     ROBOT_SCENARIOS,
     SCENARIOS,
 )
-from .plots import make_figures
-from .report import annual_path, grid, table
 from .simulate import simulate
 
 GRID_ROWS = ("gdp_gap_pct", "avg_wage_gap_pct", "labor_share_pct", "u_all_pct")

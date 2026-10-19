@@ -12,12 +12,6 @@ from typing import TYPE_CHECKING
 import matplotlib as mpl
 import numpy as np
 
-from .calibration import (
-    AI_SCENARIOS,
-    DIAGONAL_SCENARIOS,
-    PAPER_SCENARIOS,
-    ROBOT_SCENARIOS,
-)
 from .plots_common import (
     PAPER_END,
     REF_DATE,
@@ -30,6 +24,12 @@ from .plots_common import (
     style,
 )
 from .plots_labor import labor_market
+from .scenarios import (
+    AI_SCENARIOS,
+    DIAGONAL_SCENARIOS,
+    PAPER_SCENARIOS,
+    ROBOT_SCENARIOS,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
