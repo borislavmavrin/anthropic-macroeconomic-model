@@ -74,6 +74,8 @@ h1 {
 }
 .lede { margin: 0; color: var(--muted); }
 .lede b { color: var(--fg); font-weight: 500; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
 
 .layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--s5); align-items: start; }
 @media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
@@ -210,9 +212,12 @@ main.results { display: grid; gap: var(--s4); min-width: 0; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .legend i { width: 14px; height: 0; border-top: 2px solid; display: inline-block; }
 .legend i.dash { border-top-style: dashed; }
+.legend i.band { height: 10px; border-top: none; border-radius: 2px; background: currentColor; opacity: .5; }
 .legend b { font-family: var(--font-data); font-weight: 500; font-variant-numeric: tabular-nums; }
 .legend .when { color: var(--muted); font-family: var(--font-data); }
 .chart { width: 100%; height: 210px; display: block; touch-action: pan-y; }
+.panel.wide { grid-column: 1 / -1; }
+.panel.wide .chart { height: 250px; }
 .chart text { font-family: var(--font-data); font-size: 10.5px; fill: var(--muted); }
 
 footer.notes { margin-top: var(--s5); max-width: 78ch; color: var(--muted); font-size: 13px; display: grid; gap: var(--s2); }
@@ -225,7 +230,8 @@ footer.notes b { color: var(--fg); font-weight: 500; }
 <div class="wrap">
   <header class="top">
     <h1>AI and robotization, dial by dial</h1>
-    <p class="lede">Built on the task-based model of Korinek, Jones, Sacher, Cotter and McCrory (2026), <i>Economic Scenarios for Transformative AI</i>.
+    <p class="lede">Built on the task-based model of Korinek, Jones, Sacher, Cotter and McCrory (2026), <a href="https://www-cdn.anthropic.com/files/4zrzovbb/website/cf58f84d46a4a76bf5a5b039ac695fba6b80041c.pdf" target="_blank" rel="noopener"><i>Economic Scenarios for Transformative AI</i></a>
+      (<a href="https://www.anthropic.com/institute/econ-scenarios" target="_blank" rel="noopener">The Anthropic Institute's post and scenario explorer</a>).
       The original model has one shock, <b>AI</b> automating cognitive occupations, and its results stop at 2030.
       This version adds a second shock, <b>robotization</b> of all other occupations, with the same dials, and extends the horizon to 2050.</p>
     <p class="lede">The model runs monthly in your browser, so every chart re-runs as you move a dial.
@@ -276,7 +282,9 @@ footer.notes b { color: var(--fg); font-weight: 500; }
   const IDX = (year) => Math.round((year - T0) * 12);
   const MBAR = { C: M.M_BAR_C, N: M.M_BAR_N };
   const ANCHOR_M = { C: 0.14, N: 0.14 * M.M_BAR_N / M.M_BAR_C };
-  const GROUP_KEY = { C: "ai", N: "robots" };
+  // US GDP in 2024, trillions of 2025 dollars: the scale at which the model reproduces
+  // the 2030 GDP figures of the Anthropic Institute's scenario page ($34.1T, $36.3T, $44.4T)
+  const GDP_2024 = 29.74;
   const pct = (x, d) => (100 * x).toFixed(d === undefined ? 0 : d) + "%";
 
   // ------------------------------------------------------------ dials
@@ -559,6 +567,11 @@ footer.notes b { color: var(--fg); font-weight: 500; }
     const s = {};
     const make = (f) => { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = f(i); return a; };
     s.gdp = make((i) => 100 * (Math.exp(r.dlnY[i]) - 1));
+    const gn = M.DEFAULT_PARAMS.g + M.DEFAULT_PARAMS.n;
+    s.Y_noai = make((i) => GDP_2024 * Math.exp(gn * (r.t[i] - T0)));
+    s.Y = make((i) => s.Y_noai[i] * Math.exp(r.dlnY[i]));
+    s.Y_lab = make((i) => r.sL[i] * s.Y[i]);
+    s.Y_cap = make((i) => s.Y[i] - s.Y_lab[i]);
     s.trend = make((i) => 100 * Math.exp(g * (r.t[i] - T0)));
     s.inc_lab = make((i) => 100 * Math.exp(g * (r.t[i] - T0) + r.dln_labor_income[i]));
     s.inc_cap = make((i) => 100 * Math.exp(g * (r.t[i] - T0) + r.x_r[i] + r.dlnK[i]));
@@ -595,9 +608,11 @@ footer.notes b { color: var(--fg); font-weight: 500; }
   const signed = (v) => (v > 0.05 ? "+" : "") + num(v) + "%";
   const plain = (v) => num(v) + "%";
   const index = (v) => num(v);
+  const dollars = (v) => "$" + (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)) + "T";
 
   // ------------------------------------------------------------ the table
   const GLANCE = [
+    { name: "GDP, trillions of 2025 dollars", key: "Y", fmt: dollars },
     { name: "GDP, vs no-AI path", key: "gdp", fmt: signed },
     { name: "Average wage, vs no-AI path", key: "w_avg", fmt: signed },
     { name: "Labor share of income", key: "sL", fmt: plain },
@@ -632,6 +647,16 @@ footer.notes b { color: var(--fg); font-weight: 500; }
 
   // ------------------------------------------------------------ charts
   const PANELS = [
+    {
+      id: "split", wide: true, title: "How GDP is shared between workers and capital",
+      sub: "trillions of 2025 dollars; labor share from the price index; dashed line is GDP without AI", base: 0, fmt: dollars,
+      series: [
+        { key: "Y_lab", name: "Workers", color: "--c-cog", band: true },
+        { key: "Y_cap", name: "Capital", color: "--c-cap", band: true, top: "Y" },
+        { key: "Y", name: "GDP", color: "--c-all" },
+        { key: "Y_noai", name: "GDP without AI", color: "--c-base", ref: true },
+      ],
+    },
     {
       id: "gdp", title: "GDP", sub: "percent above the no-AI path", base: 0, fmt: signed,
       series: [{ key: "gdp", name: "GDP", color: "--c-all" }],
@@ -694,7 +719,7 @@ footer.notes b { color: var(--fg); font-weight: 500; }
   function buildCharts() {
     const box = document.getElementById("charts");
     for (const p of PANELS) {
-      const sec = el("section", { class: "panel", id: "panel-" + p.id, "aria-label": p.title });
+      const sec = el("section", { class: "panel" + (p.wide ? " wide" : ""), id: "panel-" + p.id, "aria-label": p.title });
       sec.append(el("h2", null, p.title), el("div", { class: "psub" }, p.sub));
       const legend = el("div", { class: "legend" });
       const svg = document.createElementNS(SVGNS, "svg");
@@ -746,14 +771,14 @@ footer.notes b { color: var(--fg); font-weight: 500; }
     const pe = panelEls[p.id];
     const svg = pe.svg;
     const W = Math.max(240, svg.clientWidth || 480);
-    const H = 210;
+    const H = p.wide ? 250 : 210;
     const m = { l: 48, r: 12, t: 8, b: 22 };
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
 
     let lo = Infinity, hi = -Infinity;
     for (const set of seriesSets(p)) for (const sp of p.series) {
-      if (sp.ref && set.pinned) continue;
+      if ((sp.ref && set.pinned) || sp.band) continue;
       for (const v of set.r.s[sp.key]) if (isFinite(v) && (!p.log || v > 0)) { if (v < lo) lo = v; if (v > hi) hi = v; }
     }
     if (p.base !== undefined && !p.log) { lo = Math.min(lo, p.base); hi = Math.max(hi, p.base); }
@@ -789,10 +814,26 @@ footer.notes b { color: var(--fg); font-weight: 500; }
       const yb = fy(p.base).toFixed(1);
       g += "<line x1=\"" + m.l + "\" x2=\"" + (W - m.r) + "\" y1=\"" + yb + "\" y2=\"" + yb + "\" style=\"stroke:var(--c-base);stroke-width:1;stroke-dasharray:3 3\"/>";
     }
+    // stacked bands of the current run: each from the previous band's top to its own
+    let floor = null;
+    for (const sp of p.series) {
+      if (!sp.band) continue;
+      const topVals = sp.top ? run.s[sp.top] : run.s[sp.key];
+      let up = "", down = "";
+      for (let i = 0; i < topVals.length; i++) {
+        up += (i ? "L" : "M") + fx(i).toFixed(1) + " " + fy(topVals[i]).toFixed(1);
+      }
+      for (let i = topVals.length - 1; i >= 0; i--) {
+        down += "L" + fx(i).toFixed(1) + " " + fy(floor ? floor[i] : 0).toFixed(1);
+      }
+      g += "<path d=\"" + up + down + "Z\" style=\"fill:var(" + sp.color + ");fill-opacity:.28;stroke:none\"/>";
+      floor = topVals;
+    }
     // pinned first so the current run draws on top
     const sets = seriesSets(p).slice().reverse();
     for (const set of sets) for (const sp of p.series) {
       if (sp.ref && set.pinned) continue;
+      if (sp.band && sp.top) continue;
       const vals = set.r.s[sp.key];
       let d = "", pen = false;
       for (let i = 0; i < vals.length; i++) {
@@ -823,10 +864,11 @@ footer.notes b { color: var(--fg); font-weight: 500; }
     const pe = panelEls[p.id];
     let h = "<span class=\"when\">" + dateOf(i) + "</span>";
     for (const sp of p.series) {
-      const cls = sp.ref ? "dash" : "";
+      const cls = sp.ref ? "dash" : sp.band ? "band" : "";
       let vals = "<b>" + p.fmt(run.s[sp.key][i]) + "</b>";
+      if (sp.band) vals += " <span class=\"when\">" + (100 * run.s[sp.key][i] / run.s.Y[i]).toFixed(1) + "%</span>";
       if (pinned && !sp.ref) vals += " <span class=\"when\">vs " + p.fmt(pinned.s[sp.key][i]) + "</span>";
-      h += "<span><i class=\"" + cls + "\" style=\"border-color:var(" + sp.color + ")\"></i>" + sp.name + " " + vals + "</span>";
+      h += "<span><i class=\"" + cls + "\" style=\"border-color:var(" + sp.color + ");color:var(" + sp.color + ")\"></i>" + sp.name + " " + vals + "</span>";
     }
     pe.legend.innerHTML = h;
   }
