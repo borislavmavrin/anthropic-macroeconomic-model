@@ -1,24 +1,19 @@
 """Modest robotization of the all-other group (this repository, not the paper).
 
-The modest AI scenario mirrored on physical and interpersonal work: the same
-affected share and diffusion of the group's work reached in 2035, a constant gain,
-a higher automation share (robots replace rather than assist), and the modest AI
-frictions for displaced workers moving into cognitive occupations.
+The paper's modest AI scenario applied to physical and interpersonal work:
+the same five objects, mid-2026 anchors, 2030 scenario date and frictions for the
+displaced, with the affected mass rescaled to the all-other group's share of tasks.
 """
 
 from __future__ import annotations
 
-from aimacro.calibration import Scenario, robot_shock
+from aimacro.calibration import Scenario, on_other_group
+
+from .modest import SHOCK as AI_SHOCK
 
 SCENARIO = Scenario(
     "robots_modest",
     ai=None,
-    robots=robot_shock(
-        share=0.2,
-        d=0.2,
-        a=(0.30, 0.30),
-        psi_rho=(0.90, 0.50),
-        frictions=(0.17, 0.10),
-    ),
+    robots=on_other_group(AI_SHOCK),
     rung="modest",
 )

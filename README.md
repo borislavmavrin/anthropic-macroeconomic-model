@@ -4,8 +4,9 @@ A Python implementation of the model in Korinek, Jones, Sacher, Cotter and McCro
 *Economic Scenarios for Transformative AI*, Anthropic Institute Working Paper 2026-02 (full citation
 [below](#source-paper)), calibrated with the paper's Table 1 and extended in three ways beyond the paper: the horizon runs to
 2050, an AGI scenario joins the paper's three AI scenarios, and the model is generalized so that
-robots can automate the all-other (physical and interpersonal) occupations too, with four
-robots-only scenarios and all sixteen AI x robot combinations.
+robots can automate the all-other (physical and interpersonal) occupations too, with three
+robots-only scenarios that mirror the paper's three AI scenarios and all twelve AI x robot
+combinations.
 
 ## Source paper
 
@@ -42,14 +43,14 @@ paper's authors.
 ```bash
 uv sync                      # Python 3.12 virtualenv with numpy, scipy, pandas, matplotlib, pytest
 uv run pytest                # 151 acceptance tests: Tables 3, 5, 6 and the Section 3.2 steady state
-uv run aimacro               # simulate all 24 scenarios to 2050, print tables, write output/
+uv run aimacro               # simulate all 19 scenarios to 2050, print tables, write output/
 ```
 
 `uv run aimacro` writes to `output/`:
 
 | file | content |
 |---|---|
-| `table_2030.csv`, `table_2036.csv`, `table_2050.csv` | all 24 scenarios in the layout of the paper's Table 3 |
+| `table_2030.csv`, `table_2036.csv`, `table_2050.csv` | all 19 scenarios in the layout of the paper's Table 3 |
 | `grid_<year>.csv` | GDP, average wage, labor share and unemployment for every AI x robot combination |
 | `annual_<scenario>.csv` | the same rows at the start of every year 2026-2050 |
 | `monthly_<scenario>.csv` | every endogenous variable of Table A.1, monthly |
@@ -70,12 +71,28 @@ snapshot(df, 2030.0)
 # robustness variants, robots only, and a combination
 simulate(SCENARIOS["extreme"].with_(eps=1.0, xi=0.9), t_end=2030.0)
 simulate(SCENARIOS["robots_extreme"], t_end=2050.0)
-simulate(SCENARIOS["agi+robots_full"], t_end=2050.0)
+simulate(SCENARIOS["extreme+robots_extreme"], t_end=2050.0)
 
-# The catalog, all in aimacro.scenarios: AI_SCENARIOS (4), ROBOT_SCENARIOS (4),
-# COMBINED_SCENARIOS (16), DIAGONAL_SCENARIOS (the 4 matched pairs),
-# PAPER_SCENARIOS (the paper's 3) and SCENARIOS (all 24).
+# The catalog, all in aimacro.scenarios: AI_SCENARIOS (4), ROBOT_SCENARIOS (3),
+# COMBINED_SCENARIOS (12), DIAGONAL_SCENARIOS (the 3 matched pairs),
+# PAPER_SCENARIOS (the paper's 3) and SCENARIOS (all 19).
 ```
+
+## Interactive web page
+
+`web/index.html` puts every dial of both shocks on sliders and re-runs the model to 2050 as they
+move: affected tasks and diffusion by 2030, the gain per task and its growth, the automation
+share, the reinstatement ratio, the frictions for displaced workers, wage rigidity and the
+capital-supply elasticity. Quick presets load the paper's scenarios, AGI and the robot ladder,
+"Copy AI dials" mirrors the AI shock onto robots, and "Pin for comparison" keeps one setting on
+every chart as dashed lines. Open the file in a browser; it needs no server or build step.
+
+`web/model.js` is a JavaScript port of `calibration.py`, `paths.py`, `static.py`, `labor.py` and
+`simulate.py`. It reproduces the Python simulation to about 1e-13 on the paper's scenarios, AGI,
+robots-only and mixed combinations. The one exception is a matched pair (the same shock on both
+groups), where the two targets fall at identical rates and rounding decides which group is
+labelled as shedding; outcomes then differ by at most 0.15 percent. The Python package remains
+the reference: change the model there first, then mirror the change in the port.
 
 ## What is implemented
 
@@ -86,9 +103,10 @@ The package follows Appendix A of the paper (Table A.1, 44 equations per month) 
   `Scenario` is an AI shock on the cognitive group, a robot shock on the all-other group (either
   may be absent) and the capital-supply elasticity.
 * `scenarios/`: one module per scenario, each defining its `SCENARIO`: the paper's three AI
-  scenarios (`modest.py`, `substantial.py`, `extreme.py`), `agi.py`, and the four robots-only
-  scenarios (`robots_modest.py` to `robots_full.py`). The package `__init__` derives the sixteen
-  combinations and assembles the catalog.
+  scenarios (`modest.py`, `substantial.py`, `extreme.py`), `agi.py`, and the three robots-only
+  scenarios (`robots_modest.py`, `robots_substantial.py`, `robots_extreme.py`), each the paper's
+  AI shock of the same name mirrored on the all-other group. The package `__init__` derives the
+  twelve combinations and assembles the catalog.
 * `paths.py`: logistic paths for the affected mass and diffusion through a shock's anchor and
   target values (eq. 8, 8'), a linear path for the gain per task, constant automation share and
   reinstatement ratio, for each group.
@@ -265,118 +283,124 @@ employment in proportion to the two surviving masses. The labor market needs one
 either group may now shrink: each month the group whose target is falling sheds workers under a
 sticky wage with layoffs, and the other absorbs them. With AI alone this is exactly the paper.
 
-### The four robots-only scenarios
+### The three robots-only scenarios
 
-The paper gives no robot parameters, so the ladder mirrors the AI ladder on all-other work,
-reached in 2035 rather than 2030 because robots lag AI, from near-zero mid-2026 anchors
-(2 percent of all-other work affected, 5 percent diffusion). The gain per task reaches the AI
-ladder's 2030 values in 2035 and keeps rising linearly after, as equation 8 prescribes.
+The paper gives no robot parameters, so each robot scenario is the paper's AI scenario of the
+same name applied to all-other work, modeled in exactly the same way: the same five objects, the
+same mid-2026 anchors and the same 2030 scenario date, with the same frictions for the displaced.
+The only adjustment is to the affected mass, which the paper states in units of the economy's
+labor tasks: it is rescaled by the ratio of the two groups' sizes (0.376 / 0.624) so that robots
+reach the same share of all-other work that AI reaches of cognitive work. Without the rescaling
+the extreme scenario's mass of 0.5 would exceed the whole all-other group.
 
-| object | robots_modest | robots_substantial | robots_extreme | robots_full |
-|---|---|---|---|---|
-| share of all-other work affected, 2035 | 0.2 | 0.3 | 0.5 | 0.995 |
-| diffusion share, 2035 | 0.2 | 0.4 | 0.6 | 0.995 |
-| gain per task, 2035 (log points) | 0.30 | 0.45 | 0.80 | 2.30 (tenfold) |
-| automation share | 0.90 | 0.90 | 0.95 | 1.0 |
-| reinstatement ratio | 0.50 | 0.25 | 0 | 0 |
-| search discount of displaced workers | 0.17 | 0.08 | 0.04 | 0.04 |
-| posting speed of the hiring group | 0.10 | 0.25 | 0.50 | 0.50 |
+| object | robots_modest | robots_substantial | robots_extreme |
+|---|---|---|---|
+| affected mass, 2030 (share of all-other work) | 0.121 (0.32) | 0.181 (0.48) | 0.301 (0.80) |
+| affected mass, mid-2026 anchor | 0.084 (0.22) | 0.084 (0.22) | 0.084 (0.22) |
+| diffusion share, 2030 (mid-2026 anchor 0.10) | 0.2 | 0.4 | 0.6 |
+| gain per task, mid-2026 (log points) and slope per year | 0.30, 0 | 0.35, 0.028 | 0.45, 0.10 |
+| automation share | 0.50 | 0.75 | 0.90 |
+| reinstatement ratio | 0.50 | 0.25 | 0 |
+| search discount of displaced workers | 0.17 | 0.08 | 0.04 |
+| posting speed of the hiring group | 0.10 | 0.25 | 0.50 |
 
-Robots replace rather than assist, hence the higher automation shares than AI's. The labor
-supply is fixed, as in the paper: there is no reservation wage, so workers stay attached to the
-market however low their wage. Robots-only results at the start of 2036 and 2050:
+The labor supply is fixed, as in the paper: there is no reservation wage, so workers stay
+attached to the market however low their wage. Robots-only results at the start of 2030, 2036
+and 2050:
 
-| | modest 2036 | modest 2050 | substantial 2036 | substantial 2050 | extreme 2036 | extreme 2050 | full 2036 | full 2050 |
-|---|---|---|---|---|---|---|---|---|
-| GDP, pct above no-AI path | 1.1 | 18.2 | 5.3 | 46.0 | 17.2 | 83.1 | 91.4 | 172.0 |
-| Average wage | 0.3 | 3.3 | 1.1 | 11.4 | 5.2 | 31.4 | 64.5 | 135.9 |
-| Cognitive wage | 0.7 | 6.6 | 3.4 | 20.9 | 16.2 | 43.8 | 72.3 | 135.9 |
-| All-other wage | -0.4 | -4.8 | -3.0 | -27.2 | -20.2 | -95.9 | -99.6 | -100 |
-| Labor share, pct of income | 59.5 | 52.5 | 57.4 | 46.1 | 52.1 | 43.1 | 48.0 | 52.0 |
-| All-other employment, pct since mid-2026 | -1.3 | -22.1 | -6.3 | -46.9 | -22.1 | -76.3 | -88.7 | -100 |
-| Unemployment, all-other workers, pct | 5.7 | 6.4 | 7.1 | 6.6 | 16.3 | 19.5 | 68.2 | 99.9 |
-| Unemployment, all workers, pct | 3.9 | 3.7 | 4.1 | 3.0 | 6.8 | 3.9 | 10.5 | 3.9 |
-| Measured TFP, pct above no-AI path | 0.4 | 5.9 | 1.8 | 16.1 | 7.2 | 33.8 | 45.5 | 77.2 |
+| | modest 2030 / 2036 / 2050 | substantial | extreme |
+|---|---|---|---|
+| GDP, pct above no-AI path | 1.0 / 4.2 / 16.5 | 5.0 / 29.4 / 60.0 | 16.7 / 65.1 / 125.0 |
+| Average wage | 0.4 / 1.8 / 6.6 | 1.4 / 9.6 / 31.4 | 6.1 / 25.9 / 80.9 |
+| Cognitive wage | 0.7 / 2.9 / 8.8 | 3.6 / 20.2 / 42.2 | 17.6 / 45.0 / 95.4 |
+| All-other wage | -0.1 / -0.2 / 1.8 | -2.6 / -19.7 / -10.4 | -22.0 / -92.8 / -93.7 |
+| Labor share, pct of income | 59.7 / 58.5 / 55.0 | 57.7 / 50.5 / 49.8 | 51.4 / 44.6 / 48.6 |
+| All-other employment, pct since mid-2026 | -0.7 / -4.1 / -16.5 | -5.4 / -29.4 / -44.5 | -25.7 / -63.8 / -79.3 |
+| Unemployment, all-other workers, pct | 5.6 / 5.9 / 5.6 | 7.4 / 10.1 / 5.2 | 22.3 / 26.5 / 14.7 |
+| Unemployment, all workers, pct | 3.9 / 3.9 / 3.6 | 4.2 / 4.4 / 2.8 | 8.9 / 6.3 / 3.1 |
+| Measured TFP, pct above no-AI path | 0.4 / 1.8 / 6.8 | 1.8 / 11.5 / 26.1 | 7.8 / 29.7 / 56.9 |
 
-The robots-only picture is the paper's picture with the groups swapped and the clock set later.
-Nothing much happens before 2030. Displaced all-other workers move into cognitive occupations,
-whose employment is up 14 to 60 percent by 2050 and whose wage rises; the all-other wage falls,
-by a few percent in the modest case and to nothing in the full case. Economy-wide unemployment
-peaks later and lower than under the matching AI scenario (8.5 percent in 2039 for extreme,
-16 percent in 2032 for full) because the robot paths are slower and the cognitive group is the
-larger of the two, so it absorbs more easily. GDP gains are smaller than AI's at every rung
-because all-other work is a smaller share of the wage bill (38 against 62 percent).
+The robots-only picture is the paper's picture with the groups swapped. Displaced all-other
+workers move into cognitive occupations, whose employment is up 10 to 48 percent by 2050 and
+whose wage rises; the all-other wage falls, slightly and then recovers in the modest case, and
+to almost nothing in the extreme case. Economy-wide unemployment peaks at the same time as under
+the matching AI scenario but lower (3.9 percent in 2035, 4.8 in 2033 and 11.4 in 2032 against
+4.0, 5.9 and 16.8 for the AI ladder), because the cognitive group is the larger of the two, so
+it absorbs the displaced more easily, and because the same share of a smaller group is a smaller
+mass of workers. GDP gains are smaller than AI's at every rung for the same reason: all-other
+work is 38 percent of the wage bill against 62 for cognitive work.
 
 ### AI and robots combined
 
-All sixteen combinations are simulated; the figures show the four matched pairs. Frictions are
+All twelve combinations are simulated; the figures show the three matched pairs. Frictions are
 per direction: displaced cognitive workers search under the AI shock's discount and are hired at
 its posting speed, displaced all-other workers under the robot shock's. Matched pairs at the
 start of 2030, 2036 and 2050:
 
-| | modest pair 2030 / 2036 / 2050 | substantial pair | extreme pair | AGI + full robots |
-|---|---|---|---|---|
-| GDP, pct above no-AI path | 1.7 / 8.4 / 57 | 8.6 / 71 / 342 | 34 / 318 / 2587 | 334 / 12344 / 45798 |
-| Average wage | 0.7 / 3.1 / 13 | 2.1 / 16 / 63 | 9.5 / 32 / -76 | 191 / -99 / -100 |
-| Labor share, pct of income | 59.4 / 57.0 / 43.3 | 56.0 / 40.3 / 22.2 | 44.8 / 18.3 / 0.5 | 28.6 / 0.0 / 0.0 |
-| Net return to capital, pct | 6.6 / 6.9 / 9.0 | 7.0 / 9.5 / 14.7 | 8.4 / 14.7 / 27.9 | 14.2 / 43.3 / 61.9 |
-| Unemployment, all workers, pct | 3.9 / 3.9 / 3.7 | 4.5 / 4.3 / 3.2 | 11.7 / 7.1 / 3.4 | 31.6 / 9.9 / 5.1 |
-| Measured TFP, pct above no-AI path | 0.7 / 3.4 / 19 | 3.2 / 23 / 80 | 14 / 73 / 242 | 99 / 383 / 507 |
+| | modest pair 2030 / 2036 / 2050 | substantial pair | extreme pair |
+|---|---|---|---|
+| GDP, pct above no-AI path | 2.7 / 12 / 54 | 15 / 132 / 417 | 88 / 836 / 5692 |
+| Average wage | 1.1 / 4.6 / 18 | 2.9 / 21 / 123 | 6.2 / -76 / -23 |
+| Labor share, pct of income | 59.1 / 56.1 / 46.1 | 53.6 / 31.3 / 25.8 | 33.9 / 1.5 / 0.8 |
+| Net return to capital, pct | 6.6 / 7.1 / 8.8 | 7.4 / 11.3 / 15.2 | 10.3 / 20.2 / 34.8 |
+| Unemployment, all workers, pct | 3.8 / 3.8 / 3.8 | 3.9 / 3.9 / 3.9 | 3.9 / 3.9 / 3.9 |
+| Measured TFP, pct above no-AI path | 1.2 / 4.9 / 20 | 5.0 / 36 / 99 | 23 / 128 / 315 |
 
-The full 4 x 4 grid at the start of 2050 (robots across, AI down; the `none` row and column are
+The full 4 x 3 grid at the start of 2050 (robots across, AI down; the `none` row and column are
 the single-shock scenarios):
 
 GDP, percent above the no-AI path
 
-| AI \ robots | none | modest | substantial | extreme | full |
-|---|---|---|---|---|---|
-| none | | 18 | 46 | 83 | 172 |
-| modest | 29 | 57 | 101 | 167 | 335 |
-| substantial | 133 | 205 | 342 | 590 | 1392 |
-| extreme | 393 | 675 | 1366 | 2587 | 10305 |
-| agi | 823 | 1553 | 3809 | 9125 | 45798 |
+| AI \ robots | none | modest | substantial | extreme |
+|---|---|---|---|---|
+| none | | 16 | 60 | 125 |
+| modest | 29 | 54 | 123 | 243 |
+| substantial | 133 | 196 | 417 | 947 |
+| extreme | 393 | 634 | 1781 | 5692 |
+| agi | 823 | 1413 | 4989 | 22988 |
 
 Labor share, percent of income
 
-| AI \ robots | none | modest | substantial | extreme | full |
-|---|---|---|---|---|---|
-| none | | 52.5 | 46.1 | 43.1 | 52.0 |
-| modest | 51.6 | 43.3 | 36.1 | 32.0 | 40.5 |
-| substantial | 41.8 | 31.8 | 22.2 | 15.5 | 21.8 |
-| extreme | 37.7 | 24.7 | 10.6 | 0.5 | 0.5 |
-| agi | 45.0 | 30.6 | 13.7 | 0.2 | 0.0 |
+| AI \ robots | none | modest | substantial | extreme |
+|---|---|---|---|---|
+| none | | 55.0 | 49.8 | 48.6 |
+| modest | 51.6 | 46.1 | 39.8 | 37.4 |
+| substantial | 41.8 | 35.0 | 25.8 | 19.6 |
+| extreme | 37.7 | 28.6 | 13.8 | 0.8 |
+| agi | 45.0 | 35.1 | 17.6 | 0.3 |
 
 What the combinations show:
 
+* **A matched pair displaces nobody.** Because the robot shock is the AI shock mirrored exactly,
+  the two groups' surviving task masses shrink in the same proportion at every date, so the
+  full-mobility targets of equation 13 never move: employment stays where it is, unemployment
+  stays at its normal 3.8 to 3.9 percent throughout, and the two groups' wages move together.
+  The matched pair is the paper's single-group mechanism applied to the whole economy, with no
+  labor reallocation at all. Off the diagonal the group hit by the larger shock sheds workers
+  much as it does alone: the extreme AI + modest robots pair peaks at 16.7 percent unemployment
+  in 2032 against 16.8 for extreme AI alone.
 * **The two shocks are far more than additive in output.** With AI alone the tasks robots would
   do are the weak link that caps output under gross complementarity, and vice versa. Hit both
-  groups and the cap lifts: the extreme pair's 2050 GDP gain is 2587 percent against 393 for AI
-  alone and 83 for robots alone. The same mechanism is why measured TFP, bounded at about triple
-  the no-AI level in any single-shock scenario, reaches six times it in the AGI + full case.
+  groups and the cap lifts: the extreme pair's 2050 GDP gain is 5692 percent against 393 for AI
+  alone and 125 for robots alone. The same mechanism is why measured TFP, bounded at about triple
+  the no-AI level in any single-shock scenario, reaches four times it in the extreme pair.
 * **Labor's share can go to zero.** Once nearly all tasks in both groups are automated, the
   surviving human tasks shrink toward nothing while every worker still has to be employed in
-  them (fixed labor supply, no reservation wage). Their marginal product vanishes, wages in both
-  groups approach zero, and all income accrues to capital: the extreme pair ends 2050 with a
-  labor share of 0.5 percent and wages 76 percent below their no-AI path despite GDP being 27
-  times higher. This is the model's answer under the choices made here, not a forecast.
-* **Unemployment is lower with both shocks than with the larger one alone** at most rungs in 2050
-  (3.4 percent for the extreme pair against 5.1 for extreme AI), because when both groups shrink
-  the workers displaced from each have somewhere to go in the other and the roles alternate; the
-  transition is nonetheless harsher at its peak (16 percent in 2032 for the extreme pair).
-* **Roles switch once in each matched pair**: the cognitive group sheds first under AI, then,
-  between 2035 and 2038, robots' displacement of all-other work overtakes it and the all-other
-  group becomes the shedding group. The switch shows as a kink in the all-other unemployment
-  rate, because the group inherits the wage it was being paid as the starting point of its
-  sticky wage.
-* **Mid-ladder pairs look like a bigger AI scenario.** The substantial pair reaches in 2050 what
-  extreme AI alone reaches around 2048 in GDP terms, with a lower labor share (22 against 38
-  percent) and lower unemployment throughout.
+  them (fixed labor supply, no reservation wage). Their marginal product falls, and all income
+  accrues to capital: the extreme pair's labor share is 1.5 percent in 2036 and 0.8 in 2050, and
+  wages are 76 percent below their no-AI path in 2036 and still 23 percent below in 2050 despite
+  GDP being 58 times higher. This is the model's answer under the choices made here, not a
+  forecast.
+* **Mid-ladder pairs look like a bigger AI scenario.** The substantial pair reaches in 2050 a
+  GDP gain slightly above extreme AI alone (417 against 393 percent), with a lower labor share
+  (26 against 38 percent) and no unemployment episode at all against a peak of 16.8 percent.
 
-Caveats, on top of the paper's own and the AGI section's: the robot ladder is an assumption
-mirrored from the AI ladder, not an estimate; the frictions for all-other workers moving into
-cognitive occupations are taken from the AI ladder although the retraining involved is likely
-harder; and the model has no mechanism (reservation wage, demand feedback, redistribution)
-that would stop a wage from falling to zero while output multiplies.
+Caveats, on top of the paper's own and the AGI section's: the robot ladder is the AI ladder
+mirrored, not an estimate, and in particular robots reach their scenario values in 2030 like AI
+rather than lagging it; the frictions for all-other workers moving into cognitive occupations are
+taken from the AI ladder although the retraining involved is likely harder; and the model has no
+mechanism (reservation wage, demand feedback, redistribution) that would stop a wage from falling
+while output multiplies.
 
 ## Follow-up work: grounding the robot shock in evidence
 
@@ -400,8 +424,9 @@ values. What it provides, and what each piece would change in this repository:
   them competitive for 2.8 million workers, which at the historical 3 percent a year takes about
   seven years; half of physical work becomes cost-competitive by 2085 at baseline and by 2050 in
   the fast scenario, and automating 90 percent of physical work takes 53 years even then. These
-  timelines are far slower than the robot ladder here, whose "full" rung reaches 99 percent of
-  all-other work by 2035 and whose "modest" rung (20 percent by 2035) is closest to the note's fast
+  timelines are far slower than the robot ladder here, whose extreme rung has robots performing
+  48 percent of all-other task instances by 2030 (80 percent of tasks affected, 60 percent
+  diffusion) and whose modest rung (6 percent of instances) is closest to the note's fast
   scenario. The diffusion logistic should be re-anchored to the note's cost-parity path, or
   replaced by a cost-driven rule: an instance switches to the robot when its annual robot cost,
   falling at a chosen rate, drops below its labor cost, which the note estimates per task.
@@ -409,7 +434,7 @@ values. What it provides, and what each piece would change in this repository:
   45,000 dollars a year for a packing robot against 49,000 in labor; welding robots at about five
   times the cost of a welder) give the unit-cost decline per robot-performed instance directly,
   which is what the gain parameter means. Its finding that robots replace rather than assist
-  physical tasks supports the high automation shares used here.
+  physical tasks argues for automation shares above the AI ladder's 0.5 to 0.9 used here.
 * **Who is displaced, and where they can go.** Highly exposed workers are 20 percentage points
   less likely to be female, 55 points less likely to hold a bachelor's degree and earn about 30
   dollars an hour less, and nine of the ten most exposed occupations are vehicle operators. That
@@ -432,7 +457,7 @@ is the step that would make the combined scenarios more than an illustration.
 
 `uv run aimacro` writes eight figures to `output/` (the PNGs are kept in git; the CSVs next to
 them are not). Colours follow the rung of the ladder: blue modest, green substantial, red extreme,
-purple AGI or full robots; dashed grey lines are the economy without AI.
+purple AGI; dashed grey lines are the economy without AI.
 
 ### The paper's horizon, 2025-2030
 
@@ -455,7 +480,7 @@ paper stops; everything to its right is the extrapolation described above.
 
 ### AI and robots combined, matched rungs, to 2050
 
-The AGI + full robots pair sets the scale of most panels; the other three pairs are best read in
+The extreme pair sets the scale of most panels; the other two pairs are best read in
 `output/table_2036.csv` and `output/table_2050.csv`.
 
 ![The matched pairs, 2025-2050](output/scenarios_combined.png)
@@ -464,7 +489,7 @@ The AGI + full robots pair sets the scale of most panels; the other three pairs 
 
 The objects each shock is made of, AI on cognitive work in the top row and robots on all-other
 work in the bottom row: the affected mass and the diffusion share follow logistics through the
-mid-2026 anchor and the scenario date (2030 for AI, 2035 for robots), then saturate at their
+mid-2026 anchor and the scenario date, 2030 for both, then saturate at their
 ceilings; their product is the share of all task instances the technology performs; the gain per
 instance rises linearly without a ceiling.
 

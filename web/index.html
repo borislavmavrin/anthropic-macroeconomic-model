@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI and Robotization Scenario Dials</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: a control desk on the left (sticky, scrolls on its own), a grid of
+   linked charts on the right; one column on phones. */
+:root {
+  --bg: #eef1f4;
+  --panel: #ffffff;
+  --fg: #16202c;
+  --muted: #5a6776;
+  --rule: #d6dce3;
+  --accent: #1d6b72;
+  --accent-soft: #dcecec;
+  --c-all: #16202c;
+  --c-cog: #2557a7;
+  --c-oth: #b0621a;
+  --c-cap: #7b3f98;
+  --c-base: #8a96a3;
+  --warn: #a5321f;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1318; --panel: #151c24; --fg: #e3e8ee; --muted: #93a0ae; --rule: #28323d;
+    --accent: #4fb0b7; --accent-soft: #17343a;
+    --c-all: #e3e8ee; --c-cog: #74a2f2; --c-oth: #e5a35e; --c-cap: #c793e3; --c-base: #6f7c8a;
+    --warn: #ef8a74;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1318; --panel: #151c24; --fg: #e3e8ee; --muted: #93a0ae; --rule: #28323d;
+  --accent: #4fb0b7; --accent-soft: #17343a;
+  --c-all: #e3e8ee; --c-cog: #74a2f2; --c-oth: #e5a35e; --c-cap: #c793e3; --c-base: #6f7c8a;
+  --warn: #ef8a74;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0;
+}
+.wrap {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: var(--s5) var(--s6);
+}
+header.top { display: grid; gap: var(--s2); margin-bottom: var(--s5); max-width: 78ch; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(24px, 3.2vw, 34px);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; color: var(--muted); }
+.lede b { color: var(--fg); font-weight: 500; }
+
+.layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--s5); align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------- controls */
+aside.desk {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + var(--s4));
+  max-height: calc(100vh - 2 * var(--s4));
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s4);
+  padding-right: var(--s1);
+}
+@media (max-width: 960px) { aside.desk { position: static; max-height: none; overflow: visible; } }
+
+.label-caps {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.presets { display: grid; gap: var(--s2); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.quick { display: grid; gap: var(--s2); }
+.quick-row { display: grid; gap: 4px; }
+.quick-label { font-size: 12px; color: var(--muted); }
+.chip {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  color: var(--fg);
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.chip:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+fieldset.shock {
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: var(--s3) var(--s4) var(--s4);
+  display: grid;
+  gap: var(--s3);
+}
+fieldset.shock[data-off="true"] .dials { opacity: 0.4; }
+.shock-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; }
+.shock-title { display: flex; align-items: center; gap: var(--s2); font-weight: 600; font-size: 14.5px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.switch input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.shock-tools { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+select, .btn {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.btn { cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); font-weight: 500; }
+.btn[disabled] { opacity: 0.45; cursor: default; }
+.group-note { margin: 0; font-size: 12.5px; color: var(--muted); }
+
+.dials { display: grid; gap: var(--s3); }
+.dial { display: grid; gap: 2px; }
+.dial-top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s2); }
+.dial label { font-size: 13px; }
+.dial output {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  white-space: nowrap;
+  text-align: right;
+}
+.dial .sub { font-size: 11.5px; color: var(--muted); }
+.dial input[type="range"] { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
+.section-cap { border-top: 1px dashed var(--rule); padding-top: var(--s2); }
+
+/* ---------------------------------------------------------------- results */
+main.results { display: grid; gap: var(--s4); min-width: 0; }
+.status {
+  display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center;
+  justify-content: space-between;
+}
+.status p { margin: 0; color: var(--muted); font-size: 13px; }
+.status .err { color: var(--warn); }
+.pinbar { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+.pinbar .pinned-name { font-size: 12.5px; color: var(--muted); }
+
+.glance {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+.glance table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.glance th, .glance td { padding: 7px 12px; text-align: right; white-space: nowrap; }
+.glance th:first-child, .glance td:first-child { text-align: left; white-space: normal; min-width: 180px; }
+.glance thead th { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--rule); }
+.glance tbody tr + tr td { border-top: 1px solid var(--rule); }
+.glance td.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.glance td.pin { color: var(--muted); }
+.glance th.pin { color: var(--muted); }
+.glance .neg { color: var(--warn); }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: var(--s3) var(--s3) var(--s2);
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.panel h2 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.panel .psub { font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; min-height: 18px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.legend i { width: 14px; height: 0; border-top: 2px solid; display: inline-block; }
+.legend i.dash { border-top-style: dashed; }
+.legend b { font-family: var(--font-data); font-weight: 500; font-variant-numeric: tabular-nums; }
+.legend .when { color: var(--muted); font-family: var(--font-data); }
+.chart { width: 100%; height: 210px; display: block; touch-action: pan-y; }
+.chart text { font-family: var(--font-data); font-size: 10.5px; fill: var(--muted); }
+
+footer.notes { margin-top: var(--s5); max-width: 78ch; color: var(--muted); font-size: 13px; display: grid; gap: var(--s2); }
+footer.notes p { margin: 0; }
+footer.notes b { color: var(--fg); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>AI and robotization, dial by dial</h1>
+    <p class="lede">Built on the task-based model of Korinek, Jones, Sacher, Cotter and McCrory (2026), <i>Economic Scenarios for Transformative AI</i>.
+      The original model has one shock, <b>AI</b> automating cognitive occupations, and its results stop at 2030.
+      This version adds a second shock, <b>robotization</b> of all other occupations, with the same dials, and extends the horizon to 2050.</p>
+    <p class="lede">The model runs monthly in your browser, so every chart re-runs as you move a dial.
+      Values are gaps from an economy without AI or robotization unless the chart says otherwise.</p>
+  </header>
+
+  <div class="layout">
+    <aside class="desk" aria-label="Scenario dials">
+      <div class="presets">
+        <span class="label-caps">Start from</span>
+        <div class="quick" id="quick"></div>
+      </div>
+      <div id="shocks"></div>
+      <fieldset class="shock" id="economy">
+        <div class="shock-head"><span class="shock-title">Economy</span></div>
+        <div class="dials" id="economy-dials"></div>
+      </fieldset>
+    </aside>
+
+    <main class="results">
+      <div class="status">
+        <p id="status">Running the model…</p>
+        <div class="pinbar">
+          <span class="pinned-name" id="pinned-name"></span>
+          <button class="btn" id="unpin" type="button" hidden>Clear pin</button>
+          <button class="btn primary" id="pin" type="button">Pin for comparison</button>
+        </div>
+      </div>
+      <div class="glance" id="glance"></div>
+      <div class="grid" id="charts"></div>
+    </main>
+  </div>
+
+  <footer class="notes">
+    <p><b>How to read it.</b> Solid lines are the current dials. After you pin a setting, it stays on every chart as dashed lines and in the table, so you can move the dials against it. Hover or drag across any chart to read every chart at that month. The grey line at 2030 marks where the paper's results stop; beyond it the paths follow the paper's equations unchanged.</p>
+    <p><b>What the model assumes.</b> The labor force is fixed and there is no reservation wage, so workers stay in the market however low their wage. Unemployment comes only from frictions while one group sheds workers and the other absorbs them. When both groups are automated at the same pace, nobody is displaced, wages fall instead, and capital takes the income. There is no redistribution: income by source is before taxes and transfers.</p>
+    <p><b>Units.</b> "Tasks it can do" is the affected mass of the paper, shown as a share of the group's own work. The gain per task is in log points (0.45 is a 57 percent unit-cost saving). Robotization starts from the AI anchors rescaled to the all-other group: 22 percent of tasks affected and 10 percent diffusion in mid-2026.</p>
+  </footer>
+</div>
+
+<script src="model.js"></script>
+<script>
+(function () {
+  "use strict";
+  const M = window.AIMacro;
+  const T0 = 2024, T_END = 2050;
+  const N_MONTHS = Math.round((T_END - T0) * 12) + 1;
+  const IDX = (year) => Math.round((year - T0) * 12);
+  const MBAR = { C: M.M_BAR_C, N: M.M_BAR_N };
+  const ANCHOR_M = { C: 0.14, N: 0.14 * M.M_BAR_N / M.M_BAR_C };
+  const GROUP_KEY = { C: "ai", N: "robots" };
+  const pct = (x, d) => (100 * x).toFixed(d === undefined ? 0 : d) + "%";
+
+  // ------------------------------------------------------------ dials
+  const SHOCK_DIALS = [
+    {
+      key: "m_target", label: "Tasks it can do by 2030",
+      min: (g) => ANCHOR_M[g] + 0.01, max: (g) => 0.995 * MBAR[g], step: 0.001,
+      show: (v, g) => pct(v / MBAR[g]) + " of the group",
+      sub: (g) => "affected mass; " + pct(ANCHOR_M[g] / MBAR[g]) + " in mid-2026",
+    },
+    {
+      key: "d_target", label: "Diffusion by 2030",
+      min: () => 0.11, max: () => 0.995, step: 0.005,
+      show: (v) => pct(v), sub: () => "share of those tasks where it is used; 10% in mid-2026",
+    },
+    {
+      key: "a_anchor", label: "Gain per task, mid-2026",
+      min: () => 0, max: () => 1.5, step: 0.01,
+      show: (v) => v.toFixed(2) + " (" + pct(Math.exp(v) - 1) + ")", sub: () => "log points of unit-cost saving",
+    },
+    {
+      key: "g_a", label: "Growth of the gain",
+      min: () => 0, max: () => 0.6, step: 0.002,
+      show: (v) => "+" + v.toFixed(3) + "/yr", sub: () => "log points per year, linear and unbounded",
+    },
+    {
+      key: "psi", label: "Automation share",
+      min: () => 0, max: () => 1, step: 0.01,
+      show: (v) => pct(v) + " replaced", sub: () => "the rest of the instances are augmented",
+    },
+    {
+      key: "rho", label: "Reinstatement ratio",
+      min: () => 0, max: () => 1, step: 0.01,
+      show: (v) => v.toFixed(2), sub: () => "new human tasks per task automated",
+    },
+    {
+      key: "mu", label: "Search efficiency of the displaced",
+      min: () => 0.01, max: () => 1, step: 0.01,
+      show: (v) => v.toFixed(2), sub: () => "relative to native searchers in the other group",
+    },
+    {
+      key: "thetaH", label: "Hiring speed of the other group",
+      min: () => 0.01, max: () => 1, step: 0.01,
+      show: (v) => v.toFixed(2) + "/mo", sub: () => "share of its shortfall posted each month",
+    },
+    {
+      key: "xi", label: "Wage stickiness while shedding",
+      min: () => 0, max: () => 0.99, step: 0.01,
+      show: (v) => v.toFixed(2), sub: () => "share of last year's wage gap that persists",
+    },
+  ];
+  const ECON_DIALS = [
+    {
+      key: "eps", label: "Capital supply elasticity",
+      min: () => 0.25, max: () => 10, step: 0.05,
+      show: (v) => v.toFixed(2), sub: () => "how fast capital grows when its return rises; 3 in the paper",
+    },
+  ];
+
+  const PRESET_SHOCKS = {
+    C: { modest: M.AI_PRESETS.modest, substantial: M.AI_PRESETS.substantial, extreme: M.AI_PRESETS.extreme, agi: M.AI_PRESETS.agi },
+    N: { modest: M.ROBOT_PRESETS.modest, substantial: M.ROBOT_PRESETS.substantial, extreme: M.ROBOT_PRESETS.extreme },
+  };
+  const PRESET_NAMES = {
+    C: { modest: "Modest (paper)", substantial: "Substantial (paper)", extreme: "Extreme (paper)", agi: "AGI" },
+    N: { modest: "Modest", substantial: "Substantial", extreme: "Extreme" },
+  };
+  const RUNGS = ["modest", "substantial", "extreme"];
+  const QUICK_ROWS = [
+    { label: "AI only (paper)", C: true, N: false },
+    { label: "Robotization only", C: false, N: true },
+    { label: "AI and robotization, matched", C: true, N: true },
+  ];
+  const QUICK = [];
+  for (const row of QUICK_ROWS) for (const r of RUNGS) {
+    QUICK.push({ row: row.label, name: r[0].toUpperCase() + r.slice(1), C: row.C ? r : null, N: row.N ? r : null });
+  }
+
+  const state = {
+    C: { on: true, preset: "extreme", shock: Object.assign({}, PRESET_SHOCKS.C.extreme) },
+    N: { on: false, preset: "extreme", shock: Object.assign({}, PRESET_SHOCKS.N.extreme) },
+    eps: 3.0,
+  };
+  let run = null;
+  let pinned = null;
+  let hover = null;
+
+  // ------------------------------------------------------------ building the desk
+  const el = (tag, attrs, html) => {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (html !== undefined) e.innerHTML = html;
+    return e;
+  };
+
+  function dialRow(id, spec, g, value, onInput) {
+    const row = el("div", { class: "dial" });
+    const top = el("div", { class: "dial-top" });
+    const lab = el("label", { for: id }, spec.label);
+    const out = el("output", { for: id, id: id + "-out" });
+    top.append(lab, out);
+    const input = el("input", { type: "range", id, min: spec.min(g), max: spec.max(g), step: spec.step });
+    input.value = value;
+    const sub = el("div", { class: "sub" }, spec.sub(g));
+    row.append(top, input, sub);
+    const refresh = () => { out.textContent = spec.show(parseFloat(input.value), g); };
+    input.addEventListener("input", () => { refresh(); onInput(parseFloat(input.value)); });
+    refresh();
+    return { row, input, refresh };
+  }
+
+  const inputs = { C: {}, N: {} };
+
+  function buildShock(g) {
+    const isAI = g === "C";
+    const fs = el("fieldset", { class: "shock", id: "shock-" + g });
+    const head = el("div", { class: "shock-head" });
+    const title = el("span", { class: "shock-title" });
+    title.append(el("span", { class: "swatch", style: "background: var(" + (isAI ? "--c-cog" : "--c-oth") + ")" }),
+      document.createTextNode(isAI ? "AI on cognitive work" : "Robotization of all-other work"));
+    const sw = el("label", { class: "switch", for: "on-" + g });
+    const box = el("input", { type: "checkbox", id: "on-" + g });
+    sw.append(box, document.createTextNode("On"));
+    head.append(title, sw);
+
+    const tools = el("div", { class: "shock-tools" });
+    const sel = el("select", { id: "preset-" + g, "aria-label": (isAI ? "AI" : "Robotization") + " preset" });
+    for (const k in PRESET_NAMES[g]) sel.append(el("option", { value: k }, PRESET_NAMES[g][k]));
+    sel.append(el("option", { value: "custom" }, "Custom"));
+    tools.append(sel);
+    let mirror = null;
+    if (!isAI) {
+      mirror = el("button", { class: "btn", type: "button", id: "mirror" }, "Copy AI dials");
+      tools.append(mirror);
+    }
+    const note = el("p", { class: "group-note" },
+      isAI ? "Cognitive occupations are 62.4% of employment." : "All other occupations, physical and interpersonal, are 37.6% of employment.");
+
+    const dials = el("div", { class: "dials" });
+    for (const spec of SHOCK_DIALS) {
+      if (spec.key === "mu") dials.append(el("div", { class: "label-caps section-cap" }, "Frictions for the workers it displaces"));
+      const d = dialRow(g + "-" + spec.key, spec, g, state[g].shock[spec.key], (v) => {
+        state[g].shock[spec.key] = v;
+        state[g].preset = "custom";
+        sel.value = "custom";
+        markQuick();
+        schedule();
+      });
+      inputs[g][spec.key] = d;
+      dials.append(d.row);
+    }
+    fs.append(head, tools, note, dials);
+
+    box.addEventListener("change", () => { state[g].on = box.checked; syncShock(g); markQuick(); schedule(); });
+    sel.addEventListener("change", () => {
+      if (sel.value === "custom") return;
+      applyPreset(g, sel.value);
+      markQuick();
+      schedule();
+    });
+    if (mirror) {
+      mirror.addEventListener("click", () => {
+        state.N.shock = M.onOtherGroup(state.C.shock);
+        state.N.on = true;
+        state.N.preset = mirrorName(state.C.preset);
+        syncShock("N");
+        markQuick();
+        schedule();
+      });
+    }
+    return fs;
+  }
+
+  function mirrorName(p) {
+    return p in PRESET_SHOCKS.N ? p : "custom";
+  }
+
+  function applyPreset(g, name) {
+    state[g].preset = name;
+    state[g].shock = Object.assign({}, PRESET_SHOCKS[g][name]);
+    syncShock(g);
+  }
+
+  function syncShock(g) {
+    const s = state[g];
+    document.getElementById("on-" + g).checked = s.on;
+    document.getElementById("preset-" + g).value = s.preset;
+    document.getElementById("shock-" + g).dataset.off = String(!s.on);
+    for (const spec of SHOCK_DIALS) {
+      const d = inputs[g][spec.key];
+      d.input.value = s.shock[spec.key];
+      d.input.disabled = !s.on;
+      d.refresh();
+    }
+  }
+
+  const quickButtons = [];
+  function buildQuick() {
+    const box = document.getElementById("quick");
+    const rows = {};
+    for (const row of QUICK_ROWS) {
+      const wrap = el("div", { class: "quick-row" });
+      wrap.append(el("span", { class: "quick-label" }, row.label));
+      const chips = el("div", { class: "chips" });
+      wrap.append(chips);
+      box.append(wrap);
+      rows[row.label] = chips;
+    }
+    QUICK.forEach((q, i) => {
+      const b = el("button", { class: "chip", type: "button", id: "quick-" + i, "aria-pressed": "false" }, q.name);
+      b.addEventListener("click", () => {
+        for (const g of ["C", "N"]) {
+          const name = q[g];
+          state[g].on = name !== null;
+          if (name) applyPreset(g, name); else syncShock(g);
+        }
+        markQuick();
+        schedule();
+      });
+      b.setAttribute("aria-label", q.row + ": " + q.name);
+      quickButtons.push(b);
+      rows[q.row].append(b);
+    });
+  }
+  function quickMatches(q) {
+    return ["C", "N"].every((g) => (q[g] === null ? !state[g].on : state[g].on && state[g].preset === q[g]));
+  }
+  function markQuick() {
+    QUICK.forEach((q, i) => quickButtons[i].setAttribute("aria-pressed", String(quickMatches(q))));
+  }
+
+  // ------------------------------------------------------------ running
+  function describe() {
+    const part = (g) => {
+      const s = state[g];
+      if (!s.on) return null;
+      const what = g === "C" ? "AI" : "robotization";
+      return (s.preset === "custom" ? "custom" : PRESET_NAMES[g][s.preset].replace(" (paper)", "").toLowerCase()) + " " + what;
+    };
+    const parts = [part("C"), part("N")].filter(Boolean);
+    return parts.length ? parts.join(" + ") : "no AI or robotization";
+  }
+
+  function scenario() {
+    return {
+      ai: state.C.on ? M.makeShock(state.C.shock) : null,
+      robots: state.N.on ? M.makeShock(state.N.shock) : null,
+      eps: state.eps,
+    };
+  }
+
+  let pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; compute(); });
+  }
+
+  const statusEl = document.getElementById("status");
+  function compute() {
+    const t = performance.now();
+    try {
+      const raw = M.simulate(scenario(), undefined, T_END);
+      run = derive(raw, describe());
+      statusEl.className = "";
+      statusEl.textContent = "Showing " + run.name + ". Solved 313 months in " + Math.max(1, Math.round(performance.now() - t)) + " ms.";
+    } catch (e) {
+      statusEl.className = "err";
+      statusEl.textContent = "The model has no solution at these dials (" + e.message + "). Move a dial back to show results again.";
+      return;
+    }
+    render();
+  }
+
+  // derived series, all on the monthly grid 2024..2050
+  function derive(r, name) {
+    const n = r.t.length;
+    const g = M.DEFAULT_PARAMS.g;
+    const ref = IDX(2026.5);
+    const s = {};
+    const make = (f) => { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = f(i); return a; };
+    s.gdp = make((i) => 100 * (Math.exp(r.dlnY[i]) - 1));
+    s.trend = make((i) => 100 * Math.exp(g * (r.t[i] - T0)));
+    s.inc_lab = make((i) => 100 * Math.exp(g * (r.t[i] - T0) + r.dln_labor_income[i]));
+    s.inc_cap = make((i) => 100 * Math.exp(g * (r.t[i] - T0) + r.x_r[i] + r.dlnK[i]));
+    s.inc_gdp = make((i) => 100 * Math.exp(g * (r.t[i] - T0) + r.dlnY[i]));
+    s.w_avg = make((i) => 100 * (Math.exp(r.dlnw_avg[i]) - 1));
+    s.w_C = make((i) => 100 * (Math.exp(r.dlnw_C[i]) - 1));
+    s.w_N = make((i) => 100 * (Math.exp(r.dlnw_N[i]) - 1));
+    s.sL = make((i) => 100 * r.sL[i]);
+    s.u_all = make((i) => 100 * (r.UC[i] + r.UN[i]));
+    s.u_C = make((i) => 100 * r.UC[i] / (r.lC[i] + r.UC[i]));
+    s.u_N = make((i) => 100 * r.UN[i] / (r.lN[i] + r.UN[i]));
+    s.e_C = make((i) => 100 * (r.lC[i] / r.lC[ref] - 1));
+    s.e_N = make((i) => 100 * (r.lN[i] / r.lN[ref] - 1));
+    s.tfp = make((i) => 100 * (Math.exp(r.tfp[i]) - 1));
+    s.ideas = make((i) => 100 * (Math.exp(r.dlnA[i]) - 1));
+    s.done_C = make((i) => 100 * r.md_C[i] / MBAR.C);
+    s.done_N = make((i) => 100 * r.md_N[i] / MBAR.N);
+    let peak = 0, peakAt = 0;
+    for (let i = 0; i < n; i++) if (s.u_all[i] > peak) { peak = s.u_all[i]; peakAt = i; }
+    return { name, s, peak, peakAt };
+  }
+
+  // ------------------------------------------------------------ formatting
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const dateOf = (i) => MONTHS[i % 12] + " " + (T0 + Math.floor(i / 12));
+  function num(v) {
+    const a = Math.abs(v);
+    if (!isFinite(v)) return "n/a";
+    if (a >= 1000) return Math.round(v).toLocaleString("en-US");
+    if (a >= 100) return v.toFixed(0);
+    if (a >= 10) return v.toFixed(1);
+    return v.toFixed(1);
+  }
+  const signed = (v) => (v > 0.05 ? "+" : "") + num(v) + "%";
+  const plain = (v) => num(v) + "%";
+  const index = (v) => num(v);
+
+  // ------------------------------------------------------------ the table
+  const GLANCE = [
+    { name: "GDP, vs no-AI path", key: "gdp", fmt: signed },
+    { name: "Average wage, vs no-AI path", key: "w_avg", fmt: signed },
+    { name: "Labor share of income", key: "sL", fmt: plain },
+    { name: "Unemployment, all workers", key: "u_all", fmt: plain },
+    { name: "Labor income per person, 2024 = 100", key: "inc_lab", fmt: index },
+    { name: "Capital income per person, 2024 = 100", key: "inc_cap", fmt: index },
+  ];
+  const GLANCE_YEARS = [2030, 2036, 2050];
+
+  function renderGlance() {
+    const cols = [{ r: run, cls: "" }];
+    if (pinned) cols.push({ r: pinned, cls: "pin" });
+    let h = "<table><thead><tr><th scope=\"col\">At the start of</th>";
+    for (const c of cols) for (const y of GLANCE_YEARS) h += "<th scope=\"col\" class=\"" + c.cls + "\">" + y + (c.cls ? " pinned" : "") + "</th>";
+    h += "</tr></thead><tbody>";
+    for (const row of GLANCE) {
+      h += "<tr><td>" + row.name + "</td>";
+      for (const c of cols) for (const y of GLANCE_YEARS) {
+        const v = c.r.s[row.key][IDX(y)];
+        const neg = row.fmt === signed && v < -0.05 ? " neg" : "";
+        h += "<td class=\"num " + c.cls + neg + "\">" + row.fmt(v) + "</td>";
+      }
+      h += "</tr>";
+    }
+    h += "<tr><td>Peak unemployment</td>";
+    for (const c of cols) {
+      h += "<td class=\"num " + c.cls + "\" colspan=\"3\">" + c.r.peak.toFixed(1) + "% in " + dateOf(c.r.peakAt) + "</td>";
+    }
+    h += "</tr></tbody></table>";
+    document.getElementById("glance").innerHTML = h;
+  }
+
+  // ------------------------------------------------------------ charts
+  const PANELS = [
+    {
+      id: "gdp", title: "GDP", sub: "percent above the no-AI path", base: 0, fmt: signed,
+      series: [{ key: "gdp", name: "GDP", color: "--c-all" }],
+    },
+    {
+      id: "income", title: "Income per person, by source", sub: "index, 2024 = 100, log scale; no redistribution", log: true, fmt: index,
+      series: [
+        { key: "inc_lab", name: "Labor income", color: "--c-cog" },
+        { key: "inc_cap", name: "Capital income", color: "--c-cap" },
+        { key: "inc_gdp", name: "GDP", color: "--c-all" },
+        { key: "trend", name: "No-AI path", color: "--c-base", ref: true },
+      ],
+    },
+    {
+      id: "wages", title: "Wages", sub: "percent above the no-AI path", base: 0, fmt: signed,
+      series: [
+        { key: "w_avg", name: "Average", color: "--c-all" },
+        { key: "w_C", name: "Cognitive", color: "--c-cog" },
+        { key: "w_N", name: "All other", color: "--c-oth" },
+      ],
+    },
+    {
+      id: "share", title: "Labor share", sub: "percent of income; 60 without AI", base: 60, fmt: plain,
+      series: [{ key: "sL", name: "Labor share", color: "--c-all" }],
+    },
+    {
+      id: "unemp", title: "Unemployment rate", sub: "percent of each labor force; 3.8 overall without AI", base: 3.84, fmt: plain,
+      series: [
+        { key: "u_all", name: "All workers", color: "--c-all" },
+        { key: "u_C", name: "Cognitive", color: "--c-cog" },
+        { key: "u_N", name: "All other", color: "--c-oth" },
+      ],
+    },
+    {
+      id: "emp", title: "Employment by occupation group", sub: "percent change since mid-2026", base: 0, fmt: signed,
+      series: [
+        { key: "e_C", name: "Cognitive", color: "--c-cog" },
+        { key: "e_N", name: "All other", color: "--c-oth" },
+      ],
+    },
+    {
+      id: "tfp", title: "Productivity and ideas", sub: "percent above the no-AI path", base: 0, fmt: signed,
+      series: [
+        { key: "tfp", name: "Measured TFP", color: "--c-all" },
+        { key: "ideas", name: "Ideas stock", color: "--c-cap" },
+      ],
+    },
+    {
+      id: "done", title: "Work done by AI and robots", sub: "percent of each group's task instances", base: 0, fmt: plain,
+      series: [
+        { key: "done_C", name: "Cognitive, by AI", color: "--c-cog" },
+        { key: "done_N", name: "All other, by robots", color: "--c-oth" },
+      ],
+    },
+  ];
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const panelEls = {};
+
+  function buildCharts() {
+    const box = document.getElementById("charts");
+    for (const p of PANELS) {
+      const sec = el("section", { class: "panel", id: "panel-" + p.id, "aria-label": p.title });
+      sec.append(el("h2", null, p.title), el("div", { class: "psub" }, p.sub));
+      const legend = el("div", { class: "legend" });
+      const svg = document.createElementNS(SVGNS, "svg");
+      svg.setAttribute("class", "chart");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", p.title + ", " + p.sub);
+      sec.append(legend, svg);
+      box.append(sec);
+      panelEls[p.id] = { sec, legend, svg, geo: null };
+      svg.addEventListener("pointermove", (e) => onHover(p.id, e));
+      svg.addEventListener("pointerdown", (e) => onHover(p.id, e));
+      svg.addEventListener("pointerleave", () => { hover = null; updateCursors(); });
+    }
+  }
+
+  function niceStep(span, count) {
+    const raw = span / Math.max(1, count);
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / mag;
+    return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag;
+  }
+
+  function linearTicks(lo, hi) {
+    const step = niceStep(hi - lo, 4);
+    const ticks = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) ticks.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+    return ticks;
+  }
+
+  function logTicks(lo, hi) {
+    const ticks = [];
+    const a = Math.floor(Math.log10(lo)), b = Math.ceil(Math.log10(hi));
+    const mult = b - a <= 2 ? [1, 2, 5] : [1];
+    for (let e = a; e <= b; e++) for (const m of mult) {
+      const v = m * Math.pow(10, e);
+      if (v >= lo * 0.999 && v <= hi * 1.001) ticks.push(v);
+    }
+    if (ticks.length < 2) return [lo, hi];
+    return ticks;
+  }
+
+  function seriesSets(p) {
+    const sets = [{ r: run, pinned: false }];
+    if (pinned) sets.push({ r: pinned, pinned: true });
+    return sets;
+  }
+
+  function drawPanel(p) {
+    const pe = panelEls[p.id];
+    const svg = pe.svg;
+    const W = Math.max(240, svg.clientWidth || 480);
+    const H = 210;
+    const m = { l: 48, r: 12, t: 8, b: 22 };
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+
+    let lo = Infinity, hi = -Infinity;
+    for (const set of seriesSets(p)) for (const sp of p.series) {
+      if (sp.ref && set.pinned) continue;
+      for (const v of set.r.s[sp.key]) if (isFinite(v) && (!p.log || v > 0)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    }
+    if (p.base !== undefined && !p.log) { lo = Math.min(lo, p.base); hi = Math.max(hi, p.base); }
+    if (!isFinite(lo)) { lo = 0; hi = 1; }
+    let ticks, fy;
+    if (p.log) {
+      lo = Math.max(lo, 1e-3) / 1.15; hi = hi * 1.15;
+      ticks = logTicks(lo, hi);
+      const L0 = Math.log(lo), L1 = Math.log(hi);
+      fy = (v) => m.t + ih * (1 - (Math.log(Math.max(v, 1e-9)) - L0) / (L1 - L0));
+    } else {
+      if (hi - lo < 1e-6) { hi += 1; lo -= 1; }
+      const pad = (hi - lo) * 0.06;
+      lo -= pad; hi += pad;
+      ticks = linearTicks(lo, hi);
+      fy = (v) => m.t + ih * (1 - (v - lo) / (hi - lo));
+    }
+    const fx = (i) => m.l + iw * (i / (N_MONTHS - 1));
+
+    let g = "";
+    for (const v of ticks) {
+      const y = fy(v).toFixed(1);
+      g += "<line x1=\"" + m.l + "\" x2=\"" + (W - m.r) + "\" y1=\"" + y + "\" y2=\"" + y + "\" style=\"stroke:var(--rule);stroke-width:1\"/>";
+      g += "<text x=\"" + (m.l - 6) + "\" y=\"" + y + "\" text-anchor=\"end\" dominant-baseline=\"middle\">" + tickLabel(v) + "</text>";
+    }
+    for (let yr = 2025; yr <= 2050; yr += 5) {
+      const x = fx(IDX(yr)).toFixed(1);
+      g += "<text x=\"" + x + "\" y=\"" + (H - 6) + "\" text-anchor=\"middle\">" + yr + "</text>";
+    }
+    const x30 = fx(IDX(2030)).toFixed(1);
+    g += "<line x1=\"" + x30 + "\" x2=\"" + x30 + "\" y1=\"" + m.t + "\" y2=\"" + (m.t + ih) + "\" style=\"stroke:var(--c-base);stroke-width:1;opacity:.6\"/>";
+    if (p.base !== undefined && !p.log) {
+      const yb = fy(p.base).toFixed(1);
+      g += "<line x1=\"" + m.l + "\" x2=\"" + (W - m.r) + "\" y1=\"" + yb + "\" y2=\"" + yb + "\" style=\"stroke:var(--c-base);stroke-width:1;stroke-dasharray:3 3\"/>";
+    }
+    // pinned first so the current run draws on top
+    const sets = seriesSets(p).slice().reverse();
+    for (const set of sets) for (const sp of p.series) {
+      if (sp.ref && set.pinned) continue;
+      const vals = set.r.s[sp.key];
+      let d = "", pen = false;
+      for (let i = 0; i < vals.length; i++) {
+        const v = vals[i];
+        if (!isFinite(v) || (p.log && v <= 0)) { pen = false; continue; }
+        d += (pen ? "L" : "M") + fx(i).toFixed(1) + " " + fy(v).toFixed(1);
+        pen = true;
+      }
+      const dash = sp.ref ? "stroke-dasharray:4 3;" : set.pinned ? "stroke-dasharray:5 4;opacity:.55;" : "";
+      const width = sp.ref ? 1.2 : 2;
+      g += "<path d=\"" + d + "\" style=\"fill:none;stroke:var(" + sp.color + ");stroke-width:" + width + ";stroke-linejoin:round;" + dash + "\"/>";
+    }
+    g += "<line class=\"cursor\" y1=\"" + m.t + "\" y2=\"" + (m.t + ih) + "\" style=\"stroke:var(--fg);stroke-width:1;opacity:.5\" visibility=\"hidden\"/>";
+    svg.innerHTML = g;
+    pe.geo = { fx, m, iw, W };
+  }
+
+  function tickLabel(v) {
+    const a = Math.abs(v);
+    if (a >= 10000) return (v / 1000).toFixed(0) + "k";
+    if (a >= 1000) return (v / 1000).toFixed(a % 1000 === 0 ? 0 : 1) + "k";
+    if (a >= 1 || v === 0) return String(Math.round(v * 10) / 10);
+    return String(Math.round(v * 100) / 100);
+  }
+
+  function renderLegend(p) {
+    const i = hover === null ? N_MONTHS - 1 : hover;
+    const pe = panelEls[p.id];
+    let h = "<span class=\"when\">" + dateOf(i) + "</span>";
+    for (const sp of p.series) {
+      const cls = sp.ref ? "dash" : "";
+      let vals = "<b>" + p.fmt(run.s[sp.key][i]) + "</b>";
+      if (pinned && !sp.ref) vals += " <span class=\"when\">vs " + p.fmt(pinned.s[sp.key][i]) + "</span>";
+      h += "<span><i class=\"" + cls + "\" style=\"border-color:var(" + sp.color + ")\"></i>" + sp.name + " " + vals + "</span>";
+    }
+    pe.legend.innerHTML = h;
+  }
+
+  function onHover(id, e) {
+    const pe = panelEls[id];
+    if (!pe.geo) return;
+    const rect = pe.svg.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (pe.geo.W / rect.width);
+    const f = (x - pe.geo.m.l) / pe.geo.iw;
+    hover = Math.min(N_MONTHS - 1, Math.max(0, Math.round(f * (N_MONTHS - 1))));
+    updateCursors();
+  }
+
+  function updateCursors() {
+    for (const p of PANELS) {
+      const pe = panelEls[p.id];
+      const cur = pe.svg.querySelector(".cursor");
+      if (cur && pe.geo) {
+        if (hover === null) cur.setAttribute("visibility", "hidden");
+        else {
+          const x = pe.geo.fx(hover).toFixed(1);
+          cur.setAttribute("x1", x);
+          cur.setAttribute("x2", x);
+          cur.setAttribute("visibility", "visible");
+        }
+      }
+      if (run) renderLegend(p);
+    }
+  }
+
+  function render() {
+    if (!run) return;
+    renderGlance();
+    for (const p of PANELS) drawPanel(p);
+    updateCursors();
+    document.getElementById("pinned-name").textContent = pinned ? "Pinned: " + pinned.name : "";
+    document.getElementById("unpin").hidden = !pinned;
+  }
+
+  // ------------------------------------------------------------ boot
+  function boot() {
+    buildQuick();
+    const shocks = document.getElementById("shocks");
+    shocks.style.display = "grid";
+    shocks.style.gap = "var(--s4)";
+    shocks.append(buildShock("C"), buildShock("N"));
+    const econ = document.getElementById("economy-dials");
+    for (const spec of ECON_DIALS) {
+      const d = dialRow("econ-" + spec.key, spec, null, state.eps, (v) => { state.eps = v; schedule(); });
+      econ.append(d.row);
+    }
+    syncShock("C");
+    syncShock("N");
+    markQuick();
+    buildCharts();
+    document.getElementById("pin").addEventListener("click", () => { if (run) { pinned = run; render(); } });
+    document.getElementById("unpin").addEventListener("click", () => { pinned = null; render(); });
+    let lastW = 0;
+    new ResizeObserver(() => {
+      const w = document.getElementById("charts").clientWidth;
+      if (w !== lastW) { lastW = w; render(); }
+    }).observe(document.getElementById("charts"));
+    compute();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

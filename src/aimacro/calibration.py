@@ -24,7 +24,6 @@ M_BAR_C = (
 M_BAR_N = 1.0 - DEFAULT_SC_OVER_SL  # all other work, same units
 T_ANCHOR = 2026.5  # anchor date of the AI paths (mid-2026)
 T_TARGET_AI = 2030.0  # date of the paper's scenario values
-T_TARGET_ROBOTS = 2035.0  # date of the robot scenario values (robots lag AI)
 
 
 def other(g: Group) -> Group:
@@ -205,45 +204,21 @@ class Scenario:
 
 # --- Building blocks of the scenario files in aimacro.scenarios ------------------
 
-# The AGI and full-robotization shocks: the technology reaches essentially all of
-# the group's tasks and performs 99 percent of their instances at the target date,
-# all automated, with a tenfold gain per task.  The affected mass and the diffusion
-# share split the 99 percent symmetrically so that neither sits on its ceiling.
+# The AGI shock: AI reaches essentially all of the group's tasks and performs 99
+# percent of their instances at the target date, all automated, with a tenfold gain
+# per task.  The affected mass and the diffusion share split the 99 percent
+# symmetrically so that neither sits on its ceiling.
 REPLACED_SHARE = 0.99
 REPLACED_SPLIT = REPLACED_SHARE**0.5
 FULL_GAIN = math.log(10.0)  # log gain per instance at the target date
 
-# Robots start from near-zero mid-2026 anchors: 2 percent of all-other work affected,
-# 5 percent diffusion.
-ROBOT_ANCHOR_SHARE = 0.02
-ROBOT_ANCHOR_DIFFUSION = 0.05
 
-
-def robot_shock(
-    share: float,
-    d: float,
-    a: tuple[float, float],
-    psi_rho: tuple[float, float],
-    frictions: tuple[float, float],
-) -> Shock:
-    """A robot shock on the all-other group that affects `share` of its work and
-    diffuses to `d` of it by 2035, with the gain rising linearly from a[0] mid-2026
-    to a[1] in 2035, automation share and reinstatement ratio `psi_rho`, and the
-    search discount and posting speed `frictions` of the workers it displaces."""
-    a_anchor, a_target = a
-    return Shock(
-        m_target=share * M_BAR_N,
-        d_target=d,
-        a_anchor=a_anchor,
-        g_a=(a_target - a_anchor) / (T_TARGET_ROBOTS - T_ANCHOR),
-        psi=psi_rho[0],
-        rho=psi_rho[1],
-        mu=frictions[0],
-        thetaH=frictions[1],
-        m_anchor=ROBOT_ANCHOR_SHARE * M_BAR_N,
-        d_anchor=ROBOT_ANCHOR_DIFFUSION,
-        t_target=T_TARGET_ROBOTS,
-    )
+def on_other_group(ai: Shock) -> Shock:
+    """The AI shock mirrored on the all-other group: the same objects, anchors, dates
+    and frictions, with the affected mass rescaled from cognitive to all-other tasks
+    so that it covers the same share of the group's work."""
+    scale = M_BAR_N / M_BAR_C
+    return replace(ai, m_target=ai.m_target * scale, m_anchor=ai.m_anchor * scale)
 
 
 DEFAULT_PARAMS = Params()

@@ -1,7 +1,8 @@
 """The scenario catalog, one module per scenario.
 
 Each module defines one `SCENARIO`.  The AI modules shock the cognitive group, the
-robot modules the all-other group.  Their combinations are derived here: an AI
+robot modules the all-other group.  Each robot module mirrors one of the paper's
+AI scenarios on the all-other group.  Their combinations are derived here: an AI
 scenario paired with a robot scenario keeps the AI scenario's capital-supply
 elasticity and rung.
 """
@@ -15,7 +16,6 @@ from . import (
     extreme,
     modest,
     robots_extreme,
-    robots_full,
     robots_modest,
     robots_substantial,
     substantial,
@@ -46,7 +46,6 @@ ROBOT_SCENARIOS: dict[str, Scenario] = _catalog(
     robots_modest.SCENARIO,
     robots_substantial.SCENARIO,
     robots_extreme.SCENARIO,
-    robots_full.SCENARIO,
 )
 COMBINED_SCENARIOS: dict[str, Scenario] = _catalog(
     *(combine(a, r) for a in AI_SCENARIOS.values() for r in ROBOT_SCENARIOS.values())

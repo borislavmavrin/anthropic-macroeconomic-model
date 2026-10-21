@@ -4,18 +4,15 @@ from __future__ import annotations
 
 from aimacro.calibration import Scenario, Shock
 
-SCENARIO = Scenario(
-    "modest",
-    ai=Shock(
-        m_target=0.2,
-        d_target=0.2,
-        a_anchor=0.30,
-        g_a=0.0,
-        psi=0.50,
-        rho=0.50,
-        mu=0.17,
-        thetaH=0.10,
-    ),
-    robots=None,
-    rung="modest",
+SHOCK = Shock(
+    m_target=0.2,
+    d_target=0.2,
+    a_anchor=0.30,
+    g_a=0.0,
+    psi=0.50,
+    rho=0.50,
+    mu=0.17,
+    thetaH=0.10,
 )
+
+SCENARIO = Scenario("modest", ai=SHOCK, robots=None, rung="modest")

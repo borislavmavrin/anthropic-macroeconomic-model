@@ -243,7 +243,7 @@ def shock_paths(
             _shock_row(list(axrow), g, family, window)
     fig.suptitle(
         "Exogenous scenario paths: logistics through the mid-2026 anchor and the scenario "
-        "date (2030 for AI, 2035 for robots); beyond it the paths follow equation 8 unchanged",
+        "date, 2030; beyond it the paths follow equation 8 unchanged",
         fontsize=10,
     )
     fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.985))

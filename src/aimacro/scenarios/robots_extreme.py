@@ -1,24 +1,19 @@
 """Extreme robotization of the all-other group (this repository, not the paper).
 
-The extreme AI scenario mirrored on physical and interpersonal work: the same
-affected share and diffusion of the group's work reached in 2035, a gain that
-reaches the AI scenario's 2030 value in 2035, a higher automation share, and the
-extreme AI frictions for displaced workers moving into cognitive occupations.
+The paper's extreme AI scenario applied to physical and interpersonal work:
+the same five objects, mid-2026 anchors, 2030 scenario date and frictions for the
+displaced, with the affected mass rescaled to the all-other group's share of tasks.
 """
 
 from __future__ import annotations
 
-from aimacro.calibration import Scenario, robot_shock
+from aimacro.calibration import Scenario, on_other_group
+
+from .extreme import SHOCK as AI_SHOCK
 
 SCENARIO = Scenario(
     "robots_extreme",
     ai=None,
-    robots=robot_shock(
-        share=0.5,
-        d=0.6,
-        a=(0.45, 0.80),
-        psi_rho=(0.95, 0.0),
-        frictions=(0.04, 0.50),
-    ),
+    robots=on_other_group(AI_SHOCK),
     rung="extreme",
 )
